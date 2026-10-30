@@ -74,17 +74,27 @@ soltar, lista de desejos com link para a Amazon UK e backup em JSON.
     barrinha de progresso e "32% · pág. 152"; o mais recente primeiro. Em
     telas estreitas as capas encolhem para caberem 2.
   - `sort.js`: critérios ("personalizado", "cor", "titulo", "autor",
-    "data", "categoria"). Cor = arco-íris pela matiz da `spineColor()` em
+    "data", "categoria", "nota"). Cor = arco-íris pela matiz da `spineColor()` em
     faixas de 15°, do claro ao escuro em cada faixa; brancos/cinzas/pretos no
     fim. Título ignora artigos iniciais; autor pelo sobrenome; data = término
     (ou início) mais recente primeiro. Cada estante guarda o seu critério
     (`settings.shelfSort`, `db.getShelfSort/setShelfSort`); a "Lendo agora"
     tem ordem automática e não mostra o seletor (`canSort`).
+  - Filtro por nota (estante aberta, em `main.js`): botões 5★…1★ e "sem
+    nota", vários ao mesmo tempo; mostra "7 de 39 livros". Guardado só na
+    memória (`ratingFilters`, por estante) — ao recarregar, tudo volta a
+    aparecer. Usa `flipReorder` para fechar/abrir os espaços.
+  - `search.js`: busca na sala (título, autor, categorias, nomes das
+    estantes; ignora acentos). Resultado abre a página do livro saindo da
+    capinha (a lista só fecha 400 ms depois, senão a animação perde o ponto
+    de partida). Sem resultado: "+ Adicionar este livro" abre o cadastro já
+    buscando o texto (`openAddBook(query)`).
   - `flip.js`: `flipReorder(elements, change)` — anima a reorganização
     (First/Last/Invert/Play): o livro sobe, flutua e se encaixa, em onda,
     total ~1 s (PER_BOOK 620 ms + atraso escalonado). Só `transform`;
     fora da tela não anima; trocar no meio parte da posição atual (cancela
-    as animações em andamento). Testado: 300 livros a ~58 fps.
+    as animações em andamento); livros que reaparecem surgem suavemente.
+    Testado: 300 livros a ~58 fps.
   - `shelf-books-picker.js`: lista com caixinhas e busca para escolher os
     livros de uma estante criada por ela.
   - `findPlace(id)` em `main.js` acha o livro na estante aberta (capa ou

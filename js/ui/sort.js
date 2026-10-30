@@ -10,6 +10,7 @@ export const SORT_OPTIONS = [
   ["autor", "Autor"],
   ["data", "Data de leitura"],
   ["categoria", "Categoria"],
+  ["nota", "Nota (maior primeiro)"],
 ];
 
 const collator = new Intl.Collator("pt-BR", { sensitivity: "base", numeric: true });
@@ -64,6 +65,8 @@ const SORTERS = {
       if (!ca !== !cb) return ca ? -1 : 1; // sem categoria no fim
       return collator.compare(ca, cb) || byTitle(a, b);
     }),
+  nota: (list) =>
+    list.sort((a, b) => (b.rating || 0) - (a.rating || 0) || byTitle(a, b)), // sem nota no fim
   cor: (list) => {
     const keys = new Map(list.map((b) => [b.id, rainbowKey(b)])); // calcula uma vez por livro
     return list.sort((a, b) => compareKeys(keys.get(a.id), keys.get(b.id)) || byTitle(a, b));

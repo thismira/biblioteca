@@ -507,12 +507,14 @@ function escapeHtml(text) {
   return String(text).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 }
 
-export function openAddBook() {
+// `query`: texto para já começar buscando (ex.: vindo da busca da sala).
+export function openAddBook(query = "") {
   if (!dialog) build();
-  searchInput.value = "";
+  searchInput.value = query;
   statusEl.textContent = "";
   resultsEl.replaceChildren();
   draft = null;
   showStep("busca");
   dialog.showModal();
+  if (isSearchable(query)) runSearch(query);
 }

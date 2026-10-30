@@ -17,6 +17,7 @@ import { openBookDetail, closeBookDetail, isBookDetailOpen } from "./ui/book-det
 import { flyIntoShelf, flyIntoCard, reducedMotion, done } from "./ui/fly-book.js";
 import { confirmDialog, promptDialog } from "./ui/dialogs.js";
 import { pickShelfBooks } from "./ui/shelf-books-picker.js";
+import { createSearch } from "./ui/search.js";
 import { queueSpineColor, SPINE_COLOR_VERSION } from "./services/spine-color.js";
 
 await db.init();
@@ -24,11 +25,16 @@ await db.init();
 const $ = (id) => document.getElementById(id);
 const emptyMessage = $("estante-vazia");
 const roomEl = $("sala");
+const roomArea = $("sala-area"); // busca + miniaturas
 const viewEl = $("vista-estante");
 const cabinet = $("movel-vista"); // o móvel da estante aberta
 const plural = (n) => `${n} livro${n === 1 ? "" : "s"}`;
 
 let currentShelf = null;      // id da estante aberta (null = sala)
+// Filtro por nota de cada estante (lembrado enquanto o site está aberto):
+// estante -> Set de notas escolhidas (0 = sem nota). Vazio = mostra todos.
+const ratingFilters = new Map();
+const activeFilter = () => ratingFilters.get(currentShelf) || new Set();
 let clickedCard = null;       // miniatura clicada (para a animação de expandir)
 let shelfOpenedByClick = false;
 let clickedSpine = null;      // livro clicado (para a animação da página do livro)
@@ -102,6 +108,13 @@ function backToRoom() {
 // ---------- Telas ----------
 
 const room = createRoom(roomEl, { onOpen: openShelf, onCreate: createNewShelf });
+// Busca na sala: abrir um livro achado, ou cadastrar se não achar.
+const search = createSearch({
+  input: $("busca-livros"),
+  list: $("busca-resultados"),
+  onOpen: openBook,
+  onAdd: (text) => openAddBook(text),
+});
 const readingShelf = createReadingShelf($("estante-lendo"), { onOpen: openBook });
 const shelf = createShelf($("estante"), { onOpen: openBook });
 
@@ -115,18 +128,26 @@ function renderRoom() {
 function renderView() {
   const info = shelfInfo(currentShelf);
   if (!info) return;
-  const books = shelfBooks(currentShelf);
+  const all = shelfBooks(currentShelf);
+  const filter = activeFilter();
+  const books = filter.size ? all.filter((b) => filter.has(b.rating || 0)) : all;
   $("vista-nome").textContent = info.name;
   $("vista-placa").textContent = `${info.icon ? info.icon + " " : ""}${info.name}`;
-  $("vista-contagem").textContent = plural(books.length);
+  $("vista-contagem").textContent = filter.size ? `${books.length} de ${plural(all.length)}` : plural(all.length);
+  document.querySelectorAll("#filtro-nota [data-nota]").forEach((b) =>
+    b.setAttribute("aria-pressed", String(filter.has(Number(b.dataset.nota))))
+  );
+  document.querySelector('#filtro-nota [data-acao="limpar-filtro"]').hidden = !filter.size;
   $("vista-acoes").hidden = !info.custom;
   $("vista-ordenar").hidden = !canSort(currentShelf);
   $("vista-ordem").value = db.getShelfSort(currentShelf);
   const empty = $("vista-vazia");
   empty.hidden = books.length > 0;
-  empty.textContent = info.custom
-    ? "Essa estante ainda está vazia. ✨ Use “+ Adicionar livros” ou a seção “Estantes” na página de cada livro."
-    : "Nenhum livro aqui por enquanto.";
+  empty.textContent = all.length && filter.size
+    ? "Nenhum livro com essa nota nesta estante."
+    : info.custom
+      ? "Essa estante ainda está vazia. ✨ Use “+ Adicionar livros” ou a seção “Estantes” na página de cada livro."
+      : "Nenhum livro aqui por enquanto.";
   // Mostra o tipo certo de estante antes de desenhar (para medir a largura).
   $("estante-lendo").hidden = !info.covers;
   $("estante").hidden = info.covers;
@@ -140,6 +161,7 @@ function refresh() {
     if (shelfInfo(currentShelf)) renderView();
   } else {
     renderRoom();
+    search.refresh(); // resultados abertos acompanham mudanças
   }
   ensureSpineColors();
 }
@@ -172,7 +194,8 @@ async function openShelfView(id) {
   const scrollBefore = window.scrollY;
 
   currentShelf = id;
-  roomEl.hidden = true;
+  search.close();
+  roomArea.hidden = true;
   emptyMessage.hidden = true;
   viewEl.hidden = false;
   renderView();
@@ -194,7 +217,7 @@ async function showRoom() {
 
   currentShelf = null;
   viewEl.hidden = true;
-  roomEl.hidden = false;
+  roomArea.hidden = false;
   readingShelf.render([]);
   shelf.render([]);
   refresh();
@@ -275,8 +298,26 @@ sortSelect.addEventListener("change", () => {
   flipReorder(shelf.elements, () => db.setShelfSort(shelfId, sortSelect.value));
 });
 
+// ---------- Filtrar por nota ----------
+// Marcar/desmarcar notas mostra só os livros com elas; os que ficam deslizam
+// para fechar os espaços (FLIP).
+$("filtro-nota").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-nota], [data-acao]");
+  if (!button || !currentShelf) return;
+  const filter = new Set(activeFilter());
+  if (button.dataset.acao === "limpar-filtro") filter.clear();
+  else {
+    const n = Number(button.dataset.nota);
+    if (filter.has(n)) filter.delete(n);
+    else filter.add(n);
+  }
+  ratingFilters.set(currentShelf, filter);
+  const elements = shelfInfo(currentShelf).covers ? readingShelf.elements : shelf.elements;
+  flipReorder(elements, renderView);
+});
+
 $("btn-sala").addEventListener("click", backToRoom);
-$("btn-adicionar").addEventListener("click", openAddBook);
+$("btn-adicionar").addEventListener("click", () => openAddBook());
 
 // ---------- Cores das lombadas ----------
 // Livros com capa e sem cor extraída (ou cuja capa ou regra de extração

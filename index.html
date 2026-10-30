@@ -43,8 +43,14 @@
       </div>
       <p class="vazio" id="estante-vazia">Sua estante está esperando o primeiro livro…</p>
 
-      <!-- A "sala": as estantes em miniatura -->
-      <div class="sala" id="sala" aria-label="Suas estantes"></div>
+      <!-- A "sala": busca + estantes em miniatura -->
+      <div class="sala-area" id="sala-area">
+        <div class="busca-sala" role="search">
+          <input type="search" id="busca-livros" placeholder="Procurar um livro da sua biblioteca…" autocomplete="off" aria-label="Procurar um livro da sua biblioteca">
+          <ul class="busca-resultados" id="busca-resultados" hidden></ul>
+        </div>
+        <div class="sala" id="sala" aria-label="Suas estantes"></div>
+      </div>
 
       <!-- Uma estante aberta -->
       <div class="vista-estante" id="vista-estante" hidden>
@@ -54,14 +60,26 @@
             <h2 id="vista-nome"></h2>
             <span id="vista-contagem"></span>
           </div>
-          <label class="ordenar" id="vista-ordenar">
-            Ordenar por
-            <select id="vista-ordem"></select>
-          </label>
           <div class="vista-acoes" id="vista-acoes" hidden>
             <button class="botao secundario" type="button" data-acao="adicionar-livros">+ Adicionar livros</button>
             <button class="link" type="button" data-acao="renomear">Renomear</button>
             <button class="link" type="button" data-acao="apagar-estante">Apagar estante</button>
+          </div>
+        </div>
+        <div class="vista-filtros">
+          <label class="ordenar" id="vista-ordenar">
+            Ordenar por
+            <select id="vista-ordem"></select>
+          </label>
+          <div class="filtro-nota" id="filtro-nota" role="group" aria-label="Mostrar só livros com estas notas">
+            <span class="filtro-rotulo">Nota:</span>
+            <button type="button" data-nota="5" aria-pressed="false">5★</button>
+            <button type="button" data-nota="4" aria-pressed="false">4★</button>
+            <button type="button" data-nota="3" aria-pressed="false">3★</button>
+            <button type="button" data-nota="2" aria-pressed="false">2★</button>
+            <button type="button" data-nota="1" aria-pressed="false">1★</button>
+            <button type="button" data-nota="0" aria-pressed="false">sem nota</button>
+            <button type="button" class="link" data-acao="limpar-filtro" hidden>limpar</button>
           </div>
         </div>
         <p class="vazio" id="vista-vazia" hidden></p>

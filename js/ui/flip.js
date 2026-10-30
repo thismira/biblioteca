@@ -34,9 +34,13 @@ export async function flipReorder(elements, change) {
   // 2. Last
   await change();
   const moves = [];
+  const appeared = [];
   for (const [id, el] of elements) {
     const from = first.get(id);
-    if (!from) continue; // livro que acabou de aparecer
+    if (!from) {
+      appeared.push(el); // livro que acabou de aparecer (ex.: filtro desmarcado)
+      continue;
+    }
     const to = el.getBoundingClientRect();
     const dx = from.left - to.left;
     const dy = from.top - to.top;
@@ -57,6 +61,16 @@ export async function flipReorder(elements, change) {
         { transform: "translate(0px, 0px)" }, // encaixa
       ],
       { duration: PER_BOOK, delay: i * step, fill: "backwards" }
+    );
+    running.add(animation);
+    animation.finished.then(() => running.delete(animation)).catch(() => {});
+  });
+
+  // Livros que voltaram a aparecer surgem suavemente, depois que os outros abriram espaço.
+  appeared.forEach((el) => {
+    const animation = el.animate(
+      [{ opacity: 0, transform: "translateY(-12px) scale(0.92)" }, { opacity: 1, transform: "none" }],
+      { duration: 420, delay: TOTAL - 520, easing: "cubic-bezier(.3,1.4,.5,1)", fill: "backwards" }
     );
     running.add(animation);
     animation.finished.then(() => running.delete(animation)).catch(() => {});
