@@ -67,6 +67,11 @@ em JSON.
     altura em JPEG (~10–20 KB, data URL em `spinePhoto`).
   - `dialogs.js`: `confirmDialog()` e `alertDialog()` no visual do site.
     Use sempre `confirmDialog({ danger: true })` antes de apagar dados.
+  - `cover-image.js`: `setCoverImage(img, url, { onFail })` — use SEMPRE
+    para mostrar capas. Tenta de novo após 1,5 s e 4 s (o servidor de capas
+    falha por alguns segundos às vezes), esconde o ícone de imagem quebrada
+    e pede no modo CORS (senão o navegador guarda uma cópia sem permissão
+    de leitura e a extração da cor da lombada falha).
   - `fly-book.js`: ferramentas da animação de "livro voando" (`done()`
     com tempo máximo, `px`, `lerp`, faces de capa/lombada) e
     `flyIntoShelf()`: livro novo voa da janela de cadastro até a estante e

@@ -3,6 +3,7 @@
 
 import { spineColor } from "./shelf.js";
 import { readableTextColor } from "../utils/color.js";
+import { setCoverImage } from "./cover-image.js";
 
 export const PERSPECTIVE = "perspective(900px)";
 
@@ -37,7 +38,7 @@ export function coverFace(book) {
   if (book.coverUrl) {
     const img = document.createElement("img");
     img.alt = "";
-    img.src = book.coverUrl;
+    setCoverImage(img, book.coverUrl);
     face.appendChild(img);
   } else {
     const color = spineColor(book);

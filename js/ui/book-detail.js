@@ -10,6 +10,7 @@ import { pickSpinePhoto } from "./spine-photo.js";
 import { spineColor } from "./shelf.js";
 import { readableTextColor } from "../utils/color.js";
 import { PERSPECTIVE as P, px, lerp, done, reducedMotion, spineFace } from "./fly-book.js";
+import { setCoverImage } from "./cover-image.js";
 
 const STATUSES = [["quero ler", "Quero ler"], ["lendo", "Lendo"], ["lido", "Lido"]];
 const HISTORY_SIZE = 6; // quantas atualizações de página aparecem no histórico
@@ -253,10 +254,8 @@ function renderCover(b, { failed = false } = {}) {
   const box = $(".detalhe-capa");
   if (b.coverUrl && !failed) {
     box.innerHTML = `<img alt="Capa de ${escapeHtml(b.title)}">`;
-    const img = box.querySelector("img");
-    // Se o servidor de capas falhar, mostra a capa gerada em vez de um vazio.
-    img.addEventListener("error", () => renderCover(b, { failed: true }), { once: true });
-    img.src = b.coverUrl;
+    // Se a capa não vier mesmo depois das novas tentativas, mostra a capa gerada.
+    setCoverImage(box.querySelector("img"), b.coverUrl, { onFail: () => renderCover(b, { failed: true }) });
     box.style.removeProperty("--cor");
   } else {
     // Sem capa: um "livro" na cor da lombada com o título.

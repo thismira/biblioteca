@@ -8,6 +8,7 @@ import * as db from "../data/db.js";
 import { searchBooks, isSearchable, getEditions, coverUrl, suggestCategories, LANGUAGES } from "../services/openlibrary.js";
 import { createCategoryPicker } from "./category-picker.js";
 import { createStar } from "./favorite-star.js";
+import { setCoverImage } from "./cover-image.js";
 
 const SEARCH_DELAY = 450; // espera ela parar de digitar (ms)
 
@@ -176,7 +177,6 @@ function build() {
   form.pages.addEventListener("input", updateStatusFields);
   setupRating();
   form.addEventListener("submit", save);
-  coverImg.addEventListener("error", () => setCover(""));
 
   dialog.addEventListener("close", () => {
     searchController?.abort();
@@ -215,10 +215,12 @@ async function runSearch(query) {
   }
 }
 
+// Miniatura da capa (carregada depois, com novas tentativas) ou a inicial.
+const initial = (title) => `<span class="miniatura-vazia">${escapeHtml(title.charAt(0))}</span>`;
 function thumb(coverId, title) {
   return coverId
-    ? `<img src="${coverUrl(coverId, "M")}" alt="" loading="lazy">`
-    : `<span class="miniatura-vazia">${escapeHtml(title.charAt(0))}</span>`;
+    ? `<img data-capa="${coverUrl(coverId, "M")}" data-inicial="${escapeHtml(title.charAt(0))}" alt="" loading="lazy">`
+    : initial(title);
 }
 
 function resultItem(result) {
@@ -237,6 +239,11 @@ function listButton(html, onClick) {
   button.type = "button";
   button.className = "resultado";
   button.innerHTML = html;
+  const img = button.querySelector("img[data-capa]");
+  if (img) {
+    // Se a capa não vier mesmo depois das novas tentativas, mostra a inicial.
+    setCoverImage(img, img.dataset.capa, { onFail: () => img.outerHTML = initial(img.dataset.inicial) });
+  }
   button.addEventListener("click", onClick);
   li.appendChild(button);
   return li;
@@ -426,8 +433,11 @@ function paintRating(n) {
 function setCover(url) {
   const box = form.querySelector(".capa-previa");
   box.classList.toggle("tem-capa", Boolean(url));
-  if (url) coverImg.src = url;
-  else coverImg.removeAttribute("src");
+  if (url) setCoverImage(coverImg, url, { onFail: () => box.classList.remove("tem-capa") });
+  else {
+    coverImg._coverTicket = null; // cancela tentativas pendentes
+    coverImg.removeAttribute("src");
+  }
 }
 
 async function save(event) {
