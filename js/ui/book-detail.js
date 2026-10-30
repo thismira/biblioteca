@@ -11,12 +11,14 @@ import { spineColor } from "./shelf.js";
 import { readableTextColor } from "../utils/color.js";
 import { PERSPECTIVE as P, px, lerp, done, reducedMotion, spineFace } from "./fly-book.js";
 import { setCoverImage } from "./cover-image.js";
+import { createQuotes } from "./quotes.js";
+import { createPlaylist } from "./playlist.js";
 
 const STATUSES = [["quero ler", "Quero ler"], ["lendo", "Lendo"], ["lido", "Lido"]];
 const HISTORY_SIZE = 6; // quantas atualizações de página aparecem no histórico
 const REVIEW_SAVE_DELAY = 600;
 
-let dialog, panel, backdrop, star, bookId;
+let dialog, panel, backdrop, star, bookId, quotes, playlist;
 let origin = null;     // a lombada clicada (para a animação de volta)
 let findSpine = null;  // acha a lombada de um livro na estante (quando a original sumiu)
 let onRequestClose = null;
@@ -126,6 +128,16 @@ function build() {
             <textarea placeholder="O que você achou? Personagens, sentimentos, aquela cena…" aria-label="Resenha"></textarea>
           </section>
 
+          <section class="secao trechos">
+            <h3>Trechos favoritos</h3>
+            <div class="detalhe-quotes"></div>
+          </section>
+
+          <section class="secao playlist">
+            <h3>Playlist do livro</h3>
+            <div class="detalhe-playlist"></div>
+          </section>
+
           <section class="secao">
             <h3>Categorias</h3>
             <div class="detalhe-categorias"></div>
@@ -142,6 +154,8 @@ function build() {
   backdrop = $(".detalhe-fundo");
 
   star = createStar({ onToggle: (active) => save({ favorite: active }) });
+  quotes = createQuotes($(".detalhe-quotes"), { getBook: book, save });
+  playlist = createPlaylist($(".detalhe-playlist"), { getBook: book, save });
   $(".lugar-estrela").appendChild(star.element);
 
   // Fechar: botão ×, clique fora do painel ou tecla Esc.
@@ -247,6 +261,8 @@ function renderAll() {
     known: db.getAllCategories(),
     onChange: (categories) => save({ categories }).then(() => db.ensureCategories(categories)),
   });
+  quotes.render();
+  playlist.render();
   renderSpineOptions();
 }
 
@@ -434,7 +450,7 @@ async function removeBook() {
   const b = book();
   const ok = await confirmDialog({
     title: "Excluir este livro?",
-    message: `"${b.title}" e tudo o que você guardou sobre ele (progresso, datas, nota, resenha) serão apagados. Isso não pode ser desfeito.`,
+    message: `"${b.title}" e tudo o que você guardou sobre ele (progresso, datas, nota, resenha, trechos e playlist) serão apagados. Isso não pode ser desfeito.`,
     confirmText: "Sim, excluir",
     cancelText: "Cancelar",
     danger: true,
@@ -603,6 +619,7 @@ export async function closeBookDetail() {
   } finally {
     if (origin) origin.style.visibility = "";
     if (spine) spine.style.visibility = "";
+    playlist.stop(); // a música não continua tocando escondida
     dialog.close();
     origin = null;
     bookId = null;

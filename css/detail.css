@@ -426,3 +426,131 @@ dialog.detalhe::backdrop { background: transparent; }
 .alca[data-canto="se"] { right: -7px; bottom: -7px; cursor: nwse-resize; }
 .janela-recorte .acoes { margin-top: 16px; }
 .janela-recorte .espaco { flex: 1; }
+
+/* ---------- Trechos favoritos ---------- */
+.quotes-lista {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.quote {
+  position: relative;
+  padding: 16px 18px 12px 46px;
+  border-radius: 14px;
+  background: var(--creme);
+  box-shadow: inset 3px 0 0 var(--rosa-doce), 0 2px 8px rgba(74, 44, 53, 0.06);
+}
+/* Aspas decorativas grandes */
+.quote::before {
+  content: "“";
+  position: absolute;
+  left: 12px;
+  top: -2px;
+  font-family: var(--fonte-titulo);
+  font-size: 3.6rem;
+  line-height: 1;
+  color: #D9A0B2;
+}
+.quote blockquote {
+  margin: 0;
+  font-family: var(--fonte-titulo);
+  font-style: italic;
+  font-size: 1.25rem;
+  line-height: 1.45;
+  white-space: pre-line; /* mantém as quebras de linha (poemas, diálogos) */
+}
+.quote-rodape {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+}
+.quote-pagina {
+  font-family: var(--fonte-titulo);
+  font-weight: 600;
+  color: var(--texto-suave);
+}
+.quote-acoes {
+  display: flex;
+  gap: 10px;
+  font-size: 0.85rem;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.quote:hover .quote-acoes,
+.quote:focus-within .quote-acoes { opacity: 1; }
+@media (hover: none) {
+  .quote-acoes { opacity: 1; } /* sem mouse (celular): sempre visíveis */
+}
+.quote.novo { animation: quote-novo 1.2s ease-out; }
+@keyframes quote-novo {
+  0% { background: #FFE9C2; transform: translateY(6px); }
+  100% { background: var(--creme); transform: none; }
+}
+.quote.editando {
+  padding-left: 18px;
+}
+.quote.editando::before { content: none; }
+.quote.editando textarea {
+  font-family: var(--fonte-titulo);
+  font-style: italic;
+  font-size: 1.15rem;
+}
+.quotes-vazio {
+  margin: 0 0 14px;
+  color: var(--texto-suave);
+  font-style: italic;
+}
+
+.quote-novo textarea { min-height: 90px; }
+.quote-linha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  margin-top: 10px;
+}
+.quote-linha label {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--texto);
+  font-size: 0.95rem;
+}
+.quote-linha input[type="number"] { width: 100px; }
+
+/* ---------- Playlist do Spotify ---------- */
+.playlist-player iframe {
+  display: block;
+  width: 100%;
+  border: none;
+  border-radius: 14px;
+  background: var(--rosa-po);
+}
+.playlist-acoes {
+  display: flex;
+  gap: 14px;
+  margin-top: 8px;
+  font-size: 0.9rem;
+}
+.playlist-linha {
+  display: flex;
+  gap: 10px;
+}
+.playlist-linha input { flex: 1; }
+.playlist-erro {
+  margin: 8px 0 0;
+  color: #A33A3A;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.playlist-erro:empty { display: none; }
+.dica-playlist {
+  margin: 6px 0 0;
+  font-size: 0.85rem;
+  color: var(--texto-suave);
+}

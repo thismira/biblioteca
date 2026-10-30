@@ -62,6 +62,14 @@ em JSON.
     `main.js`; "voltar" do navegador fecha). Tudo salva na hora. Animações
     usam `done()` (tempo máximo) e um pedido de fechar durante a abertura é
     guardado e executado depois — não remover essas proteções.
+  - `quotes.js`: trechos favoritos na página do livro (em ordem de página,
+    editar no lugar, apagar sempre com `confirmDialog`). Quebras de linha
+    são mantidas (`white-space: pre-line`).
+  - `playlist.js` + `services/spotify.js`: cola link do Spotify (playlist,
+    álbum, música; aceita `intl-pt`, `?si=`, `spotify:` e `embed/`), guarda
+    o link "limpo" em `spotifyUrl` e mostra o player embutido. Links curtos
+    (`spotify.link`) não dão para resolver: mostra como copiar o completo.
+    O player é desligado ao fechar a página do livro (`playlist.stop()`).
   - `spine-photo.js`: escolher foto, recortar com retângulo (pointer
     events), gira sozinho se a lombada estiver deitada, reduz para 360px de
     altura em JPEG (~10–20 KB, data URL em `spinePhoto`).
@@ -133,7 +141,7 @@ dentro da pasta) e o `.claude/launch.json` só se conecta a
   currentPage, progressLog: [{ date, page }], favorite,
   edition: { publisher, year, lang },
   startDate, endDate, rating, review,
-  quotes: [{ id, text, page }], spotifyUrl,
+  quotes: [{ id, text, page, createdAt }], spotifyUrl,
   spineColor, spineColorSource,     // cor automática (da capa)
   spineColorCustom,                 // cor escolhida à mão (prioridade)
   spinePhoto, spinePhotoAspect,     // foto da lombada (só livros físicos)
