@@ -457,3 +457,29 @@
   translate: 0 -14px;
   scale: 1.045;
 }
+
+/* ---------- Arrastar e soltar ---------- */
+/* A cópia do livro "na mão", seguindo o ponteiro */
+.lombada-fantasma {
+  position: fixed;
+  z-index: 60;
+  margin: 0;
+  pointer-events: none;
+  box-shadow: 10px 18px 26px rgba(40, 10, 20, 0.45), 2px 0 4px rgba(40, 10, 20, 0.35);
+}
+/* A vaga: onde o livro vai cair */
+.lombada.lombada-vaga {
+  opacity: 0.3;
+  outline: 2px dashed rgba(255, 250, 248, 0.9);
+  outline-offset: -2px;
+}
+body.arrastando-livro,
+body.arrastando-livro * {
+  cursor: grabbing !important;
+  user-select: none;
+}
+/* Durante o arraste os livros não "sobem" ao passar por baixo do ponteiro */
+body.arrastando-livro .lombada:hover {
+  translate: none;
+  scale: none;
+}

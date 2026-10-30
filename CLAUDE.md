@@ -95,6 +95,17 @@ soltar, lista de desejos com link para a Amazon UK e backup em JSON.
     fora da tela não anima; trocar no meio parte da posição atual (cancela
     as animações em andamento); livros que reaparecem surgem suavemente.
     Testado: 300 livros a ~58 fps.
+  - `drag.js`: arrastar e soltar (pointer events). Mouse: vira arraste
+    após 6 px; toque: segurar 350 ms (mexer antes = rolagem). Cópia
+    ("fantasma") segue o ponteiro; o original vira a "vaga"; os outros
+    deslizam (FLIP curto de 200 ms); rolagem automática perto das bordas;
+    Esc cancela; o clique depois de soltar é ignorado. Usa posições sem a
+    animação (`cacheLayout`) e ignora o ponteiro sobre a própria vaga para
+    não tremer. Em `main.js`: `adoptCurrentOrder()` (arrastar em outra ordem
+    vira "Personalizado" partindo da ordem da tela; nas automáticas só os
+    lugares dos livros daquela estante são reordenados) e `saveMove()`
+    (encaixa entre os mesmos vizinhos visíveis — funciona com filtro de
+    nota). A estante não é redesenhada no meio de um arraste.
   - `shelf-books-picker.js`: lista com caixinhas para escolher os livros de
     uma estante dela: busca sem acentos (título, autor, categoria), filtros
     por status, categoria e nota, "Só os marcados", e "Marcar/Desmarcar

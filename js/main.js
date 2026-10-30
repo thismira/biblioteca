@@ -18,6 +18,7 @@ import { flyIntoShelf, flyIntoCard, reducedMotion, done } from "./ui/fly-book.js
 import { confirmDialog, promptDialog } from "./ui/dialogs.js";
 import { pickShelfBooks } from "./ui/shelf-books-picker.js";
 import { createSearch } from "./ui/search.js";
+import { enableDragAndDrop } from "./ui/drag.js";
 import { queueSpineColor, SPINE_COLOR_VERSION } from "./services/spine-color.js";
 
 await db.init();
@@ -156,6 +157,8 @@ function renderView() {
 }
 
 function refresh() {
+  // No meio de um arraste a estante não é redesenhada (só depois de soltar).
+  if (dragger?.isDragging()) return;
   emptyMessage.hidden = db.getBooks().some((b) => b.location === "estante") || Boolean(currentShelf);
   if (currentShelf) {
     if (shelfInfo(currentShelf)) renderView();
@@ -314,6 +317,64 @@ $("filtro-nota").addEventListener("click", (event) => {
   ratingFilters.set(currentShelf, filter);
   const elements = shelfInfo(currentShelf).covers ? readingShelf.elements : shelf.elements;
   flipReorder(elements, renderView);
+});
+
+// ---------- Arrastar e soltar ----------
+// Só nas estantes de lombadas (a "Lendo agora" tem ordem automática).
+
+// Arrastar em outra ordem muda para "Personalizado" partindo da ordem que
+// está na tela, sem nenhum livro mudar de lugar.
+function adoptCurrentOrder() {
+  if (db.getShelfSort(currentShelf) === "personalizado") return;
+  const shown = shelfBooks(currentShelf).map((b) => b.id); // todos, na ordem atual
+  sortSelect.value = "personalizado";
+  const custom = db.getShelf(currentShelf);
+  if (custom) {
+    const rest = custom.bookIds.filter((id) => !shown.includes(id));
+    db.setShelfBooks(currentShelf, [...shown, ...rest]);
+  } else {
+    // Arrumação geral: os lugares desses livros recebem a ordem atual;
+    // os outros livros não saem do lugar.
+    const order = [...db.getSettings().customOrder];
+    const inShelf = new Set(shown);
+    const queue = [...shown];
+    const merged = order.map((id) => (inShelf.has(id) ? queue.shift() : id)).filter(Boolean);
+    db.updateSettings({ customOrder: [...merged, ...queue] });
+  }
+  db.setShelfSort(currentShelf, "personalizado");
+}
+
+// Coloca `id` entre `prevId` e `nextId` numa lista de ids.
+function placeBetween(order, id, prevId, nextId) {
+  const list = order.filter((x) => x !== id);
+  let i = nextId ? list.indexOf(nextId) : -1;
+  if (i < 0) {
+    const p = prevId ? list.indexOf(prevId) : -1;
+    i = p >= 0 ? p + 1 : list.length;
+  }
+  list.splice(i, 0, id);
+  return list;
+}
+
+// Salva a arrumação: o livro fica entre os mesmos vizinhos que ela vê
+// (com filtro ativo, os livros escondidos não saem do lugar).
+async function saveMove(id, prevId, nextId, changed) {
+  if (!changed) return refresh();
+  const custom = db.getShelf(currentShelf);
+  if (custom) await db.setShelfBooks(currentShelf, placeBetween(custom.bookIds, id, prevId, nextId));
+  else {
+    const order = db.getSettings().customOrder;
+    const missing = db.getBooks().map((b) => b.id).filter((x) => !order.includes(x));
+    await db.updateSettings({ customOrder: placeBetween([...order, ...missing], id, prevId, nextId) });
+  }
+}
+
+const dragger = enableDragAndDrop({
+  container: $("estante"),
+  canDrag: () => Boolean(currentShelf) && !shelfInfo(currentShelf)?.covers,
+  onStart: adoptCurrentOrder,
+  renderOrder: (ids) => shelf.render(ids.map((id) => db.getBook(id)).filter(Boolean)),
+  onDrop: saveMove,
 });
 
 $("btn-sala").addEventListener("click", backToRoom);
