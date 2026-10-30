@@ -554,3 +554,16 @@ dialog.detalhe::backdrop { background: transparent; }
   font-size: 0.85rem;
   color: var(--texto-suave);
 }
+
+/* Andamento da leitura do texto da foto */
+.quote-leitura {
+  margin: 8px 0 0;
+  font-size: 0.9rem;
+  color: var(--acento);
+  font-weight: 600;
+}
+.quote-leitura:empty { display: none; }
+.botao:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}

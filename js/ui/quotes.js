@@ -3,6 +3,12 @@
 // `save(changes)` grava as mudanças.
 
 import { confirmDialog } from "./dialogs.js";
+import { pickAndCrop } from "./photo-crop.js";
+import { recognizeText } from "../services/ocr.js";
+
+// Confiança da leitura (0–100): abaixo de MIN não preenche; abaixo de GOOD avisa.
+const MIN_CONFIDENCE = 45;
+const GOOD_CONFIDENCE = 75;
 
 const newId = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
 
@@ -24,13 +30,17 @@ export function createQuotes(container, { getBook, save }) {
         <label for="quote-pagina">Página</label>
         <input id="quote-pagina" type="number" min="1" inputmode="numeric">
         <button class="botao" type="submit">Guardar trecho</button>
+        <button class="botao secundario" type="button" data-acao="fotografar">📷 Fotografar trecho</button>
       </div>
+      <p class="quote-leitura" aria-live="polite"></p>
     </form>`;
 
   const list = container.querySelector(".quotes-lista");
   const form = container.querySelector(".quote-novo");
   const textInput = form.querySelector("textarea");
   const pageInput = form.querySelector("input");
+  const photoButton = form.querySelector('[data-acao="fotografar"]');
+  const readingStatus = form.querySelector(".quote-leitura");
   let editingId = null; // trecho em edição (só um por vez)
 
   // Página digitada -> número dentro do livro, ou null se vazia.
@@ -90,9 +100,47 @@ export function createQuotes(container, { getBook, save }) {
     await save({ quotes: [...(getBook().quotes || []), quote] });
     textInput.value = "";
     pageInput.value = "";
+    readingStatus.textContent = "";
     render();
     // Destaca o trecho novo.
     list.querySelector(`[data-id="${quote.id}"]`)?.classList.add("novo");
+  });
+
+  // Foto do trecho: ela recorta o trecho na foto e o site lê o texto.
+  photoButton.addEventListener("click", async () => {
+    const piece = await pickAndCrop({
+      title: "Foto do trecho",
+      hint: "Ajuste o retângulo em volta só do trecho que você quer guardar.",
+      box: "trecho",
+      maxSize: 2400, // mais resolução ajuda a ler letras pequenas
+    });
+    if (!piece) return;
+    photoButton.disabled = true;
+    try {
+      const { text, confidence } = await recognizeText(piece, {
+        onProgress: (message, progress) => {
+          readingStatus.textContent = progress > 0 && progress < 1 ? `${message} ${Math.round(progress * 100)}%` : message;
+        },
+      });
+      // Confiança baixa = foto ruim: melhor não colar letras sem sentido.
+      if (!text || confidence < MIN_CONFIDENCE) {
+        readingStatus.textContent = "Não consegui ler bem essa foto. Tente de novo com mais luz, com a página bem reta e mais de perto.";
+        return;
+      }
+      // Se já havia texto no campo, o novo entra embaixo.
+      textInput.value = textInput.value.trim() ? `${textInput.value.trim()}\n\n${text}` : text;
+      readingStatus.textContent = confidence < GOOD_CONFIDENCE
+        ? "Li o trecho, mas a foto estava difícil: confira o texto com atenção antes de guardar."
+        : "Pronto! Confira o texto: o leitor às vezes troca uma letra ou outra.";
+      textInput.focus();
+    } catch (err) {
+      console.error(err);
+      readingStatus.textContent = err.message.startsWith("Não consegui")
+        ? err.message
+        : "Algo deu errado ao ler a foto. Tente de novo.";
+    } finally {
+      photoButton.disabled = false;
+    }
   });
 
   list.addEventListener("click", async (event) => {
@@ -135,6 +183,7 @@ export function createQuotes(container, { getBook, save }) {
       editingId = null;
       textInput.value = "";
       pageInput.value = "";
+      readingStatus.textContent = "";
       render();
     },
   };

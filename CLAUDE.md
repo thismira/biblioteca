@@ -64,14 +64,24 @@ em JSON.
     guardado e executado depois — não remover essas proteções.
   - `quotes.js`: trechos favoritos na página do livro (em ordem de página,
     editar no lugar, apagar sempre com `confirmDialog`). Quebras de linha
-    são mantidas (`white-space: pre-line`).
+    são mantidas (`white-space: pre-line`). Botão "📷 Fotografar trecho":
+    recorta a foto e lê o texto (`services/ocr.js`); confiança < 45 não
+    preenche nada, < 75 preenche com aviso para conferir.
+  - `services/ocr.js`: Tesseract.js 6.0.1 (jsDelivr), carregado só no
+    primeiro uso, português + inglês, modo de bloco único (PSM 6). Antes de
+    ler: amplia, tons de cinza, desfoque leve, iguala a iluminação (divide
+    pelo "papel" estimado) e contraste pelos percentis 1%/99% — sem isso,
+    fotos com sombra e granulado viram lixo. `cleanText()` junta linhas do
+    mesmo parágrafo e palavras com hífen no fim da linha.
+  - `photo-crop.js`: editor de recorte genérico (`pickAndCrop`), usado pela
+    foto da lombada e pela foto de trecho.
   - `playlist.js` + `services/spotify.js`: cola link do Spotify (playlist,
     álbum, música; aceita `intl-pt`, `?si=`, `spotify:` e `embed/`), guarda
     o link "limpo" em `spotifyUrl` e mostra o player embutido. Links curtos
     (`spotify.link`) não dão para resolver: mostra como copiar o completo.
     O player é desligado ao fechar a página do livro (`playlist.stop()`).
-  - `spine-photo.js`: escolher foto, recortar com retângulo (pointer
-    events), gira sozinho se a lombada estiver deitada, reduz para 360px de
+  - `spine-photo.js`: usa `pickAndCrop`; gira sozinho se a lombada estiver
+    deitada, reduz para 360px de
     altura em JPEG (~10–20 KB, data URL em `spinePhoto`).
   - `dialogs.js`: `confirmDialog()` e `alertDialog()` no visual do site.
     Use sempre `confirmDialog({ danger: true })` antes de apagar dados.
