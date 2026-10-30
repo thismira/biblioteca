@@ -64,3 +64,13 @@ export function roomShelves() {
   }));
   return [...autos, ...customs];
 }
+
+// Ids das estantes em que um livro aparece: as automáticas que combinam
+// com ele (menos a "Lendo agora" quando não está em leitura etc.) e as
+// estantes dela que o incluem.
+export function shelvesContaining(book) {
+  if (book.location !== "estante") return [];
+  const autos = AUTO_SHELVES.filter((s) => s.filter(book)).map((s) => s.id);
+  const customs = db.getShelves().filter((s) => s.bookIds.includes(book.id)).map((s) => s.id);
+  return [...autos, ...customs];
+}

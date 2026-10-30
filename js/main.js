@@ -9,11 +9,10 @@ import * as db from "./data/db.js";
 import { createShelf } from "./ui/shelf.js";
 import { createReadingShelf } from "./ui/reading-shelf.js";
 import { createRoom } from "./ui/room.js";
-import { roomShelves, shelfInfo, shelfBooks, canSort } from "./ui/shelf-defs.js";
+import { roomShelves, shelfInfo, shelfBooks, canSort, shelvesContaining } from "./ui/shelf-defs.js";
 import { SORT_OPTIONS } from "./ui/sort.js";
 import { flipReorder } from "./ui/flip.js";
 import { openAddBook } from "./ui/add-book.js";
-import { flyStar } from "./ui/favorite-star.js";
 import { openBookDetail, closeBookDetail, isBookDetailOpen } from "./ui/book-detail.js";
 import { flyIntoShelf, flyIntoCard, reducedMotion, done } from "./ui/fly-book.js";
 import { confirmDialog, promptDialog } from "./ui/dialogs.js";
@@ -311,36 +310,45 @@ function scrollToCenter(el) {
   });
 }
 
-// A capa voa da janela de cadastro até o lugar do livro: a lombada (ou capa)
-// na estante aberta, ou a miniatura da estante, se ela estiver na sala.
-// Se for favorito, depois a estrelinha voa até os Favoritos.
+// Espera um pouco (para as cópias saírem uma logo depois da outra).
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const COPY_STAGGER = 120; // intervalo entre as cópias (ms)
+
+// A capa voa da janela de cadastro até o lugar do livro:
+// - na sala: uma cópia voa para CADA estante a que o livro pertence
+//   (Todos, a do status, Favoritos, as estantes dela) e cada uma brilha;
+// - numa estante aberta: voa até a lombada (ou capa) dele ali; se ele não
+//   pertence a essa estante, voa até o botão "← Sala".
 document.addEventListener("livro:adicionado", async ({ detail }) => {
   const book = db.getBook(detail.id);
   if (!book) return;
-  // Cadastrado de dentro de uma estante dela: já entra nessa estante.
-  if (shelfInfo(currentShelf)?.custom) await db.setBookShelves(book.id, [currentShelf]);
+  // Cadastrado de dentro de uma estante dela: entra também nessa estante
+  // (somada às estantes que ela escolheu no cadastro).
+  if (shelfInfo(currentShelf)?.custom) {
+    const chosen = db.getShelves().filter((s) => s.bookIds.includes(book.id)).map((s) => s.id);
+    await db.setBookShelves(book.id, [...new Set([...chosen, currentShelf])]);
+  }
 
-  let landed = null; // onde o livro "pousou" (para a estrelinha sair dali)
-  const spine = findPlace(book.id);
-  if (spine) {
-    spine.style.visibility = "hidden"; // escondida até o livro "chegar"
-    await scrollToCenter(spine);
-    if (reducedMotion()) spine.style.visibility = "";
-    else await flyIntoShelf(detail.coverRect, book, spine);
-    landed = spine;
-  } else if (!currentShelf) {
-    const card = room.cards.get(book.status === "lendo" ? "lendo" : "todos");
-    if (card) {
-      await scrollToCenter(card);
-      if (!reducedMotion()) await flyIntoCard(detail.coverRect, book, card);
-      landed = card;
+  if (currentShelf) {
+    const spine = findPlace(book.id);
+    if (spine) {
+      spine.style.visibility = "hidden"; // escondida até o livro "chegar"
+      await scrollToCenter(spine);
+      if (reducedMotion()) spine.style.visibility = "";
+      else await flyIntoShelf(detail.coverRect, book, spine);
+    } else if (!reducedMotion()) {
+      await flyIntoCard(detail.coverRect, book, $("btn-sala"));
     }
+    return;
   }
 
-  const favoritesCard = !currentShelf && detail.favorite && room.cards.get("favoritos");
-  if (favoritesCard && landed) {
-    const from = landed.getBoundingClientRect();
-    await scrollToCenter(favoritesCard);
-    flyStar(from, favoritesCard);
-  }
+  // Na sala: as estantes do livro que aparecem como miniatura.
+  const targets = shelvesContaining(book).filter((id) => room.cards.has(id));
+  if (!targets.length || reducedMotion()) return;
+  await scrollToCenter(roomEl);
+  await Promise.all(
+    targets.map((id, i) =>
+      wait(i * COPY_STAGGER).then(() => flyIntoCard(detail.coverRect, book, () => room.cards.get(id)))
+    )
+  );
 });

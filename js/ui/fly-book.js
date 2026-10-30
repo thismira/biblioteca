@@ -96,10 +96,16 @@ export async function flyIntoShelf(fromRect, book, spine) {
 }
 
 // Livro novo quando ela está na sala: a capa voa da janela de cadastro e
-// "entra" na miniatura da estante, que dá um brilho ao recebê-la.
-export async function flyIntoCard(fromRect, book, card) {
-  const to = card.getBoundingClientRect();
-  const target = { left: to.left + to.width / 2 - 22, top: to.top + to.height * 0.3, width: 44, height: 66 };
+// "entra" na miniatura da estante (ou num botão), que brilha ao recebê-la.
+// `target` pode ser o elemento ou uma função que o devolve: a miniatura é
+// procurada de novo no fim do voo, porque a sala pode ter sido redesenhada.
+export async function flyIntoCard(fromRect, book, target) {
+  const find = () => (typeof target === "function" ? target() : target);
+  const start = find();
+  if (!start) return;
+  const to = start.getBoundingClientRect();
+  const size = Math.min(44, to.width * 0.5);
+  const landing = { left: to.left + to.width / 2 - size / 2, top: to.top + to.height * 0.3, width: size, height: size * 1.5 };
 
   const flier = document.createElement("div");
   flier.className = "livro-voando";
@@ -110,11 +116,13 @@ export async function flyIntoCard(fromRect, book, card) {
   await done(flier.animate(
     [
       { ...px(fromRect), transform: `${PERSPECTIVE} rotate(0deg)`, opacity: 1 },
-      { ...px(target), transform: `${PERSPECTIVE} rotate(-8deg)`, opacity: 0.85 },
+      { ...px(landing), transform: `${PERSPECTIVE} rotate(-8deg)`, opacity: 0.85 },
     ],
-    { duration: 650, easing: "cubic-bezier(.5,0,.3,1)", fill: "forwards" }
+    { duration: 700, easing: "cubic-bezier(.5,0,.3,1)", fill: "forwards" }
   ));
   flier.remove();
+  const card = find();
+  if (!card) return;
   card.classList.remove("chegou");
   void card.offsetWidth; // reinicia a animação de brilho
   card.classList.add("chegou");

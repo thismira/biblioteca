@@ -14,7 +14,7 @@ const SEARCH_DELAY = 450; // espera ela parar de digitar (ms)
 
 let dialog, steps, searchInput, statusEl, resultsEl;
 let editionStatusEl, editionListEl, tabsEl;
-let form, coverImg, picker, star;
+let form, coverImg, picker, shelfPicker, star;
 let searchTimer, searchController, editionController;
 
 // O livro que está sendo cadastrado (preenchido pela busca ou à mão).
@@ -124,6 +124,10 @@ function build() {
         <div class="campo">
           <span class="rotulo">Categorias</span>
           <div class="seletor-categorias"></div>
+        </div>
+        <div class="campo">
+          <span class="rotulo">Estantes</span>
+          <div class="seletor-estantes"></div>
         </div>
         <div class="acoes">
           <button class="botao secundario" type="button" data-acao="voltar-revisar">Voltar</button>
@@ -379,6 +383,12 @@ function showReview(data) {
   });
   rating = 0;
   paintRating(0);
+  // Estantes criadas por ela (escrever um nome novo cria a estante ao guardar).
+  shelfPicker = createCategoryPicker(form.querySelector(".seletor-estantes"), {
+    known: db.getShelves().map((s) => s.name),
+    placeholder: "Criar estante e apertar Enter",
+    emptyText: "Em nenhuma estante sua (vai para as automáticas)",
+  });
   updateStatusFields();
   showStep("revisar");
   form.elements.title.focus();
@@ -474,6 +484,14 @@ async function save(event) {
     categories,
   });
   await db.ensureCategories(categories);
+
+  // Estantes escolhidas: as que ainda não existem são criadas agora.
+  const shelfIds = [];
+  for (const name of shelfPicker.getSelected()) {
+    const existing = db.getShelves().find((s) => s.name.toLowerCase() === name.toLowerCase());
+    shelfIds.push(existing ? existing.id : (await db.addShelf(name)).id);
+  }
+  if (shelfIds.length) await db.setBookShelves(book.id, shelfIds);
 
   const coverRect = form.querySelector(".capa-previa").getBoundingClientRect();
   const starRect = star.element.getBoundingClientRect();

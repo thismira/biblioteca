@@ -130,13 +130,18 @@ soltar, lista de desejos com link para a Amazon UK e backup em JSON.
   - `fly-book.js`: ferramentas da animação de "livro voando" (`done()`
     com tempo máximo, `px`, `lerp`, faces de capa/lombada) e
     `flyIntoShelf()`: livro novo voa da janela de cadastro até a estante
-    aberta e vira lombada; na sala, `flyIntoCard()` faz a capa entrar na
-    miniatura ("Todos" ou "Lendo agora"). Evento `livro:adicionado`, tratado
-    em `main.js`; se for favorito e ela estiver na sala, a estrelinha voa até
-    a miniatura dos Favoritos. Livro cadastrado de dentro de uma estante
-    dela já entra nessa estante.
+    aberta e vira lombada. Na sala, uma CÓPIA voa para cada estante a que o
+    livro pertence (`shelvesContaining()` em shelf-defs.js: automáticas que
+    combinam + estantes dela), com 120 ms entre as cópias; cada miniatura
+    brilha (`flyIntoCard`, que procura o alvo de novo no fim do voo porque a
+    sala pode ter sido redesenhada). Numa estante aberta em que o livro não
+    entra, ele voa até o botão "← Sala". Evento `livro:adicionado`, tratado
+    em `main.js`. Livro cadastrado de dentro de uma estante dela entra
+    também nessa estante (somada às escolhidas).
   - `add-book.js`: cadastro em 3 passos (buscar → edição → revisar).
     Status "Lido" mostra nota e "Terminei em" (hoje) e salva progresso 100%.
+    Campo "Estantes" (chips) escolhe as estantes dela já no cadastro; nomes
+    novos criam a estante ao guardar.
     `isSearchable()` (openlibrary.js) evita buscar só com palavras comuns
     ("the" dá 422, "of the" dá 500 na Open Library).
     ISBN e link da capa não aparecem para ela (o ISBN fica guardado para o
