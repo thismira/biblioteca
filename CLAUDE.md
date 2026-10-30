@@ -79,7 +79,13 @@ soltar, lista de desejos com link para a Amazon UK e backup em JSON.
     `deleteShelf`, `setShelfBooks`, `setBookShelves`); um livro pode estar
     em várias (como playlists) e `bookIds` guarda a ordem da arrumação.
   - `room.js`: a sala — miniaturas das estantes (plaquinha, prévia das
-    lombadas ou mini capas, contagem) + cartão "Nova estante". Abrir uma
+    lombadas ou mini capas, contagem) + cartão "Nova estante". As
+    lombadinhas copiam a lombada grande em escala 0,3: volume, trama, o
+    mesmo acabamento (`spineFinish()` em shelf.js), risquinhos de título e
+    autor, pontinho dourado nos favoritos. Estante cheia (>16): os 3 últimos
+    ficam deitados numa pilha; não cheia: o último fica inclinado. Hover na
+    miniatura: os livros sobem em onda. `fitNiche()` ajusta telas estreitas
+    (pilha vira livros em pé, tira livros/capas do fim até caber). Abrir uma
     estante: a miniatura cresce até a estante grande (`growFrom`, FLIP, em
     `main.js`); voltar: o inverso.
   - `reading-shelf.js`: estante "Lendo agora" com a CAPA de frente,

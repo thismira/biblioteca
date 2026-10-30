@@ -125,12 +125,15 @@ export function spineColor(book) {
   return book.spineColorCustom || book.spineColor || fallbackColor(book.title + book.author);
 }
 
+// Acabamento fixo de cada livro (0–3), igual na estante e na miniatura da sala.
+export const spineFinish = (book) => hashString(book.id + ":estilo") % 4;
+
 function createSpine(book, onOpen) {
   const el = document.createElement("button");
   el.type = "button";
   el.className = "lombada";
   el.dataset.id = book.id;
-  el.dataset.estilo = hashString(book.id + ":estilo") % 4; // acabamento fixo por livro
+  el.dataset.estilo = spineFinish(book); // acabamento fixo por livro
   el.innerHTML = `<span class="lombada-estrela" aria-hidden="true">★</span><span class="lombada-texto"><span class="lombada-espaco"></span><span class="lombada-titulo"></span><span class="lombada-autor"></span></span>`;
   el.addEventListener("click", () => onOpen(el.dataset.id, el));
   return el;
