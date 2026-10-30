@@ -36,6 +36,7 @@ function withDefaults(fields) {
     categories: [],
     location: "estante",
     status: "quero ler",
+    format: "fisico", // "fisico" | "kindle" (Kindle não tem foto de lombada)
     currentPage: 0,
     // Histórico de atualizações de leitura: [{ date, page }].
     // Permite mostrar quantas páginas ela leu desde a última atualização.

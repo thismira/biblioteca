@@ -92,11 +92,18 @@ function build() {
                   <option value="lido">Lido</option>
                 </select>
               </div>
-              <div class="campo campo-pagina-atual" hidden>
-                <label for="cad-pagina-atual">Em que página você está?</label>
-                <input id="cad-pagina-atual" name="currentPage" type="number" min="0" inputmode="numeric">
-                <small class="dica-pagina"></small>
+              <div class="campo">
+                <label for="cad-formato">Formato</label>
+                <select id="cad-formato" name="format">
+                  <option value="fisico">Físico</option>
+                  <option value="kindle">Kindle</option>
+                </select>
               </div>
+            </div>
+            <div class="campo campo-pagina-atual" hidden>
+              <label for="cad-pagina-atual">Em que página você está?</label>
+              <input id="cad-pagina-atual" name="currentPage" type="number" min="0" inputmode="numeric">
+              <small class="dica-pagina"></small>
             </div>
           </div>
         </div>
@@ -400,6 +407,7 @@ async function save(event) {
     coverUrl: draft.coverUrl,
     edition: draft.edition,
     status,
+    format: form.format.value,
     currentPage,
     progressLog: status === "lendo" ? [{ date: new Date().toISOString(), page: currentPage }] : [],
     startDate: status === "lendo" ? today() : "",

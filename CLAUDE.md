@@ -24,8 +24,10 @@ em JSON.
 - HTML, CSS e JavaScript puros, com módulos ES (`<script type="module">`).
   Sem bibliotecas e sem etapa de build.
 - Site estático, publicável no GitHub Pages. Rotas com `#` (ex.: `#/livro/id`).
-- Rodar localmente: `python3 -m http.server 8080` (módulos não funcionam
-  abrindo o arquivo com duplo clique). Configurado em `.claude/launch.json`.
+- Rodar localmente: `python3 servidor-local.py` (porta 8080, envia
+  `Cache-Control: no-store` — o `http.server` comum deixava o navegador usar
+  JS antigo do cache). Módulos não funcionam abrindo o arquivo com duplo
+  clique.
 - Dados: `localStorage` via `js/data/local-store.js`; a API de `db.js` é toda
   assíncrona para facilitar a troca por um `supabase-store.js`.
 
@@ -75,16 +77,18 @@ em JSON.
   horizontal e girado 90°; título centralizado, autor em maiúsculas no pé.
   O tamanho da letra é calculado medindo o texto (`measureText`) em
   `js/ui/shelf.js`.
-- Hover na lombada: o livro sobe e cresce de leve ("puxar"). Usa as
-  propriedades CSS `translate`/`scale`, deixando `transform` livre para as
-  animações FLIP e de arrastar.
+- Hover na lombada: o livro inclina pelo topo em 3D, como se fosse puxado
+  (`rotate: x -22deg` com origem na base, `.prateleira` com `perspective`).
+  O `shelf.js` centraliza o `perspective-origin` no livro sob o mouse para
+  ele não "tombar" de lado. Usa as propriedades `rotate`/`translate`,
+  deixando `transform` livre para as animações FLIP e de arrastar.
 - Fontes: Cormorant Garamond (títulos, lombadas, quotes) + Nunito Sans
   (interface).
 - Cores definidas como variáveis em `:root` (`css/base.css` e `css/shelf.css`).
 
 ## Preview local
 O macOS impede o servidor iniciado pelo preview de ler a pasta Documentos.
-Por isso o servidor é ligado pelo terminal (`python3 -m http.server 8080`
+Por isso o servidor é ligado pelo terminal (`python3 servidor-local.py`
 dentro da pasta) e o `.claude/launch.json` só se conecta a
 `http://localhost:8080`.
 
@@ -93,6 +97,7 @@ dentro da pasta) e o `.claude/launch.json` só se conecta a
 { id, title, author, coverUrl, pages, isbn, categories: [],
   location: "estante" | "desejos",
   status: "quero ler" | "lendo" | "lido",
+  format: "fisico" | "kindle",
   currentPage, progressLog: [{ date, page }], favorite,
   edition: { publisher, year, lang },
   startDate, endDate, rating, review,
@@ -102,6 +107,11 @@ dentro da pasta) e o `.claude/launch.json` só se conecta a
 ```
 Configurações (`settings`): `sortBy`, `customOrder` (lista de ids),
 `categories` (criadas pela leitora).
+
+Etapa 4 (página do livro) deve incluir também: escolher a cor da lombada à
+mão (`spineColorManual`) e "📷 Foto da lombada" (foto reduzida, ~10 KB,
+guardada no livro; não aparece para livros `kindle`). Não existe fonte
+automática de fotos de lombada (Open Library e Google Books só têm capas).
 
 `progressLog` ganha uma entrada a cada atualização de página; a página do
 livro (etapa 4) usa isso para mostrar % que falta, páginas que faltam e

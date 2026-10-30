@@ -129,6 +129,17 @@ export function createShelf(container, { onOpen, minShelves = 3 }) {
 
   container.classList.add("estante");
 
+  // O efeito de "puxar" inclina o livro em 3D. Centralizamos a perspectiva
+  // da prateleira no livro sob o mouse (ou com foco do teclado), para ele
+  // inclinar para a frente sem parecer tombar para o lado.
+  const aimPerspective = (event) => {
+    const spine = event.target.closest?.(".lombada");
+    if (!spine) return;
+    spine.parentElement.style.perspectiveOrigin = `${spine.offsetLeft + spine.offsetWidth / 2}px 40%`;
+  };
+  container.addEventListener("pointerover", aimPerspective);
+  container.addEventListener("focusin", aimPerspective);
+
   function makeRow() {
     const row = document.createElement("div");
     row.className = "prateleira";

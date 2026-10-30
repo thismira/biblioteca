@@ -8,10 +8,11 @@ Os arquivos JavaScript usam módulos, que o navegador só carrega a partir de um
 servidor. Dentro da pasta do projeto, rode:
 
 ```bash
-python3 -m http.server 8080
+python3 servidor-local.py
 ```
 
-e abra <http://localhost:8080>.
+e abra <http://localhost:8080>. Esse servidor avisa o navegador para não
+guardar cópias antigas, então cada mudança aparece ao recarregar a página.
 
 ## Onde ficam os dados
 
