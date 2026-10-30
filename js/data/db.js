@@ -8,6 +8,9 @@ const DEFAULT_SETTINGS = {
   sortBy: "personalizado",
   customOrder: [],
   categories: [],
+  // Estantes criadas por ela: [{ id, name, bookIds, createdAt }].
+  // `bookIds` também guarda a ordem de arrumação daquela estante.
+  shelves: [],
 };
 
 let books = [];
@@ -112,6 +115,63 @@ export async function deleteBook(id) {
   await store.removeBook(id);
   await updateSettings({
     customOrder: settings.customOrder.filter((x) => x !== id),
+    // o livro também sai de todas as estantes
+    shelves: settings.shelves.map((s) => ({ ...s, bookIds: s.bookIds.filter((x) => x !== id) })),
+  });
+}
+
+// ---------- Estantes criadas por ela ----------
+// Um livro pode estar em várias estantes (como playlists).
+
+export function getShelves() {
+  return settings.shelves;
+}
+
+export function getShelf(id) {
+  return settings.shelves.find((s) => s.id === id) || null;
+}
+
+// Já existe uma estante com esse nome? (sem diferenciar maiúsculas)
+export function shelfNameTaken(name, exceptId = null) {
+  const n = name.trim().toLowerCase();
+  return settings.shelves.some((s) => s.id !== exceptId && s.name.trim().toLowerCase() === n);
+}
+
+export async function addShelf(name, bookIds = []) {
+  const shelf = { id: newId(), name: name.trim(), bookIds, createdAt: new Date().toISOString() };
+  await updateSettings({ shelves: [...settings.shelves, shelf] });
+  return shelf;
+}
+
+export async function renameShelf(id, name) {
+  await updateSettings({
+    shelves: settings.shelves.map((s) => (s.id === id ? { ...s, name: name.trim() } : s)),
+  });
+}
+
+// Apaga só a estante; os livros continuam na biblioteca.
+// Atenção: só chamar depois de a leitora confirmar.
+export async function deleteShelf(id) {
+  await updateSettings({ shelves: settings.shelves.filter((s) => s.id !== id) });
+}
+
+// Define os livros de uma estante (na ordem dada).
+export async function setShelfBooks(id, bookIds) {
+  await updateSettings({
+    shelves: settings.shelves.map((s) => (s.id === id ? { ...s, bookIds: [...new Set(bookIds)] } : s)),
+  });
+}
+
+// Coloca o livro exatamente nas estantes `shelfIds` (entra no fim das novas).
+export async function setBookShelves(bookId, shelfIds) {
+  const wanted = new Set(shelfIds);
+  await updateSettings({
+    shelves: settings.shelves.map((s) => {
+      const has = s.bookIds.includes(bookId);
+      if (wanted.has(s.id) && !has) return { ...s, bookIds: [...s.bookIds, bookId] };
+      if (!wanted.has(s.id) && has) return { ...s, bookIds: s.bookIds.filter((x) => x !== bookId) };
+      return s;
+    }),
   });
 }
 

@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="css/shelf.css">
   <link rel="stylesheet" href="css/add-book.css">
   <link rel="stylesheet" href="css/detail.css">
+  <link rel="stylesheet" href="css/room.css">
 </head>
 <body>
   <header class="topo">
@@ -36,28 +37,36 @@
   </header>
 
   <main id="app">
-    <section class="area-estante" aria-label="Estante">
+    <section class="area-estante" aria-label="Biblioteca">
       <div class="barra">
         <button class="botao" type="button" id="btn-adicionar">+ Adicionar livro</button>
       </div>
       <p class="vazio" id="estante-vazia">Sua estante está esperando o primeiro livro…</p>
 
-      <div class="movel movel-destaque" id="secao-lendo" hidden>
-        <div class="movel-topo"><span class="placa">❦ Lendo agora</span></div>
-        <div id="estante-lendo" aria-label="Lendo agora"></div>
-        <div class="movel-base" aria-hidden="true"></div>
-      </div>
+      <!-- A "sala": as estantes em miniatura -->
+      <div class="sala" id="sala" aria-label="Suas estantes"></div>
 
-      <div class="movel movel-destaque movel-favoritos" id="secao-favoritos" hidden>
-        <div class="movel-topo"><span class="placa">★ Favoritos</span></div>
-        <div id="estante-favoritos" aria-label="Favoritos"></div>
-        <div class="movel-base" aria-hidden="true"></div>
-      </div>
-
-      <div class="movel">
-        <div class="movel-topo" aria-hidden="true"></div>
-        <div id="estante"></div>
-        <div class="movel-base" aria-hidden="true"></div>
+      <!-- Uma estante aberta -->
+      <div class="vista-estante" id="vista-estante" hidden>
+        <div class="vista-cabecalho">
+          <button class="botao secundario" type="button" id="btn-sala">← Sala</button>
+          <div class="vista-titulo">
+            <h2 id="vista-nome"></h2>
+            <span id="vista-contagem"></span>
+          </div>
+          <div class="vista-acoes" id="vista-acoes" hidden>
+            <button class="botao secundario" type="button" data-acao="adicionar-livros">+ Adicionar livros</button>
+            <button class="link" type="button" data-acao="renomear">Renomear</button>
+            <button class="link" type="button" data-acao="apagar-estante">Apagar estante</button>
+          </div>
+        </div>
+        <p class="vazio" id="vista-vazia" hidden></p>
+        <div class="movel" id="movel-vista">
+          <div class="movel-topo"><span class="placa" id="vista-placa"></span></div>
+          <div id="estante-lendo" aria-label="Lendo agora" hidden></div>
+          <div id="estante"></div>
+          <div class="movel-base" aria-hidden="true"></div>
+        </div>
       </div>
     </section>
   </main>

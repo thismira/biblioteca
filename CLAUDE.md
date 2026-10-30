@@ -1,11 +1,12 @@
 # Minha Biblioteca — biblioteca pessoal virtual
 
-Site de presente: uma estante virtual para uma leitora registrar seus livros.
-Estante com lombadas (cor extraída da borda esquerda da capa), página de cada
-livro (status, progresso, datas, nota, resenha, quotes, playlist do Spotify),
-ordenação com animação FLIP, modo "Personalizado" com arrastar e soltar,
-prateleira "Lendo agora", lista de desejos com link para a Amazon UK e backup
-em JSON.
+Site de presente: uma biblioteca virtual para uma leitora registrar seus
+livros. A tela inicial é uma "sala" com estantes em miniatura (automáticas e
+criadas por ela); clicar numa estante faz ela crescer e virar a estante
+grande, com lombadas (cor extraída da borda esquerda da capa). Página de cada
+livro (status, progresso, datas, nota, resenha, trechos, playlist do
+Spotify), ordenação com animação FLIP, modo "Personalizado" com arrastar e
+soltar, lista de desejos com link para a Amazon UK e backup em JSON.
 
 ## Regras de trabalho (obrigatórias)
 - **Responder sempre em português.**
@@ -34,9 +35,12 @@ em JSON.
 ## Estrutura
 - `index.html` — página única.
 - `css/` — `base.css` (cores, fontes, componentes), `shelf.css`,
+  `room.css` (sala, cabeçalho da estante aberta, escolher livros),
   `add-book.css` (cadastro e chips de categoria), `detail.css` (página do
   livro, confirmações, editor de foto), `wishlist.css`.
-- `js/main.js` — inicialização e rotas.
+- `js/main.js` — inicialização, telas e rotas: `#/` (sala), `#/estante/<id>`
+  (estante aberta), `#/livro/<id>` (página do livro por cima da tela
+  atual). "Voltar" do navegador funciona em todas.
 - `js/data/` — `db.js` (fachada) e `local-store.js` (implementação).
 - `js/services/` — Open Library, cor da lombada, Spotify, Amazon.
   - `openlibrary.js`: busca (PT ou EN) sem pedir a lista de ISBNs (pode ter
@@ -56,12 +60,23 @@ em JSON.
     aumente `SPINE_COLOR_VERSION`: `spineColorSource` ("v<n>:<capa>")
     faz as cores antigas serem refeitas. A cor escolhida à mão fica em
     `spineColorCustom` e tem prioridade (`spineColor()` em `shelf.js`).
-  - `reading-shelf.js`: estante "Lendo agora" (topo da página). Livros com
-    status "lendo" saem da estante principal e aparecem aqui com a CAPA de
-    frente, barrinha de progresso e "32% · pág. 152"; o mais recente
-    primeiro. Em telas estreitas as capas encolhem para caberem 2.
-    `findPlace(id)` em `main.js` acha o livro na "Lendo agora" ou na
-    estante (usado pelas animações de abrir/fechar e de chegada).
+  - `shelf-defs.js`: quais estantes existem. Automáticas (`AUTO_SHELVES`):
+    Lendo agora (capas de frente), Favoritos, Todos os livros, Quero ler,
+    Lidos — as vazias somem da sala, menos "Todos os livros". As criadas por
+    ela ficam em `settings.shelves` (db.js: `addShelf`, `renameShelf`,
+    `deleteShelf`, `setShelfBooks`, `setBookShelves`); um livro pode estar
+    em várias (como playlists) e `bookIds` guarda a ordem da arrumação.
+  - `room.js`: a sala — miniaturas das estantes (plaquinha, prévia das
+    lombadas ou mini capas, contagem) + cartão "Nova estante". Abrir uma
+    estante: a miniatura cresce até a estante grande (`growFrom`, FLIP, em
+    `main.js`); voltar: o inverso.
+  - `reading-shelf.js`: estante "Lendo agora" com a CAPA de frente,
+    barrinha de progresso e "32% · pág. 152"; o mais recente primeiro. Em
+    telas estreitas as capas encolhem para caberem 2.
+  - `shelf-books-picker.js`: lista com caixinhas e busca para escolher os
+    livros de uma estante criada por ela.
+  - `findPlace(id)` em `main.js` acha o livro na estante aberta (capa ou
+    lombada); usado pelas animações de abrir/fechar e de chegada.
   - `book-detail.js`: página do livro (um `<dialog>` em tela cheia).
     Abre com o livro saindo da prateleira, girando (rotateY) e virando capa;
     fecha pelo caminho inverso. Rotas: `#/livro/<id>` (tratadas em
@@ -92,7 +107,8 @@ em JSON.
   - `spine-photo.js`: usa `pickAndCrop`; gira sozinho se a lombada estiver
     deitada, reduz para 360px de
     altura em JPEG (~10–20 KB, data URL em `spinePhoto`).
-  - `dialogs.js`: `confirmDialog()` e `alertDialog()` no visual do site.
+  - `dialogs.js`: `confirmDialog()`, `alertDialog()` e `promptDialog()`
+    (pede um texto, com validação) no visual do site.
     Use sempre `confirmDialog({ danger: true })` antes de apagar dados.
   - `cover-image.js`: `setCoverImage(img, url, { onFail })` — use SEMPRE
     para mostrar capas. Tenta de novo após 1,5 s e 4 s (o servidor de capas
@@ -101,20 +117,23 @@ em JSON.
     de leitura e a extração da cor da lombada falha).
   - `fly-book.js`: ferramentas da animação de "livro voando" (`done()`
     com tempo máximo, `px`, `lerp`, faces de capa/lombada) e
-    `flyIntoShelf()`: livro novo voa da janela de cadastro até a estante e
-    vira lombada (evento `livro:adicionado`, tratado em `main.js`; se for
-    favorito, depois a estrelinha voa até os favoritos).
+    `flyIntoShelf()`: livro novo voa da janela de cadastro até a estante
+    aberta e vira lombada; na sala, `flyIntoCard()` faz a capa entrar na
+    miniatura ("Todos" ou "Lendo agora"). Evento `livro:adicionado`, tratado
+    em `main.js`; se for favorito e ela estiver na sala, a estrelinha voa até
+    a miniatura dos Favoritos. Livro cadastrado de dentro de uma estante
+    dela já entra nessa estante.
   - `add-book.js`: cadastro em 3 passos (buscar → edição → revisar).
     Status "Lido" mostra nota e "Terminei em" (hoje) e salva progresso 100%.
     `isSearchable()` (openlibrary.js) evita buscar só com palavras comuns
     ("the" dá 422, "of the" dá 500 na Open Library).
     ISBN e link da capa não aparecem para ela (o ISBN fica guardado para o
     link da Amazon). Páginas só são digitáveis no cadastro manual.
-  - `category-picker.js`: chips de categoria reutilizável (cadastro e
-    página do livro).
+  - `category-picker.js`: chips reutilizáveis — categorias (cadastro e
+    página do livro) e estantes (seção "Estantes" na página do livro, que
+    também cria estantes novas).
   - `favorite-star.js`: estrela que "estoura" com faíscas e `flyStar()`, a
-    estrelinha que voa até a prateleira de favoritos (evento
-    `livro:favoritado`, tratado em `main.js`).
+    estrelinha que voa até um alvo.
   - Atenção em formulários: use `form.elements.title`, não `form.title`
     (que é o atributo title do próprio formulário).
 - `js/utils/` — funções de cor e utilidades.
@@ -166,8 +185,9 @@ dentro da pasta) e o `.claude/launch.json` só se conecta a
   spinePhoto, spinePhotoAspect,     // foto da lombada (só livros físicos)
   wishPrice, wishPriceDate, createdAt, updatedAt }
 ```
-Configurações (`settings`): `sortBy`, `customOrder` (lista de ids),
-`categories` (criadas pela leitora).
+Configurações (`settings`): `sortBy`, `customOrder` (lista de ids; ordem
+das estantes automáticas), `categories` (criadas pela leitora), `shelves`
+(estantes dela: `[{ id, name, bookIds, createdAt }]`).
 
 Não existe fonte automática de fotos de lombada (Open Library e Google
 Books só têm capas): por isso ela fotografa os próprios livros. Fotos
@@ -178,6 +198,10 @@ fotos devem ir para o Storage.
 `progressLog` ganha uma entrada a cada atualização de página; a página do
 livro usa isso para mostrar % que falta, páginas que faltam e páginas lidas
 desde a última atualização. Ao abrir o banco, `db.init()` completa livros
-antigos com os campos novos (`withDefaults`). Ordem das estantes: "Lendo agora" → Favoritos → Estante. Favoritos
-aparecem numa estante própria (plaquinha dourada) e com estrelinha na
-lombada também na estante principal.
+antigos com os campos novos (`withDefaults`). Excluir um livro também o tira
+de todas as estantes. Apagar uma estante nunca apaga livros. Favoritos têm
+estrelinha dourada na lombada em qualquer estante.
+
+As etapas 7 (ordenação) e 8 (arrastar) funcionam dentro da estante aberta:
+cada estante dela tem sua própria ordem (`bookIds`); as automáticas usam
+`customOrder`.

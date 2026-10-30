@@ -8,18 +8,24 @@ function normalize(name) {
   return clean.charAt(0).toUpperCase() + clean.slice(1);
 }
 
-export function createCategoryPicker(container, { selected = [], suggestions = [], known = [], onChange } = {}) {
+// `placeholder` e `emptyText` permitem usar o mesmo seletor para estantes.
+export function createCategoryPicker(container, {
+  selected = [], suggestions = [], known = [], onChange,
+  placeholder = "Criar categoria e apertar Enter",
+  emptyText = "Nenhuma categoria ainda",
+} = {}) {
   let chosen = [...new Set(selected)];
 
   container.classList.add("categorias");
   container.innerHTML = `
     <div class="chips chips-escolhidas" aria-label="Categorias escolhidas"></div>
     <div class="chips chips-sugeridas" aria-label="Sugestões"></div>
-    <input type="text" class="categoria-nova" placeholder="Criar categoria e apertar Enter" autocomplete="off">`;
+    <input type="text" class="categoria-nova" autocomplete="off">`;
 
   const chosenEl = container.querySelector(".chips-escolhidas");
   const suggestedEl = container.querySelector(".chips-sugeridas");
   const input = container.querySelector(".categoria-nova");
+  input.placeholder = placeholder;
 
   function chip(name, kind) {
     const b = document.createElement("button");
@@ -33,7 +39,10 @@ export function createCategoryPicker(container, { selected = [], suggestions = [
 
   function render() {
     chosenEl.replaceChildren(...chosen.map((n) => chip(n, "escolhida")));
-    if (!chosen.length) chosenEl.innerHTML = `<span class="chips-vazio">Nenhuma categoria ainda</span>`;
+    if (!chosen.length) {
+      chosenEl.innerHTML = `<span class="chips-vazio"></span>`;
+      chosenEl.firstChild.textContent = emptyText;
+    }
     // Sugestões da Open Library primeiro, depois as que ela já criou.
     const options = [...new Set([...suggestions, ...known])].filter((n) => !chosen.includes(n));
     suggestedEl.replaceChildren(...options.map((n) => chip(n, "sugerida")));

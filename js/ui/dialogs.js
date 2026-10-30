@@ -48,3 +48,55 @@ export async function confirmDialog({ title, message, confirmText = "Confirmar",
 export async function alertDialog({ title, message, buttonText = "Entendi" }) {
   await openDialog({ title, message, buttons: [{ text: buttonText, value: "ok" }] });
 }
+
+// Pede um texto (ex.: nome de estante). Devolve o texto ou null se ela
+// cancelar. `validate(texto)` pode devolver uma mensagem de erro.
+export function promptDialog({ title, label, value = "", placeholder = "", confirmText = "Salvar", validate }) {
+  return new Promise((resolve) => {
+    const dialog = document.createElement("dialog");
+    dialog.className = "janela-confirmar";
+    dialog.innerHTML = `
+      <form class="janela">
+        <h2></h2>
+        <div class="campo">
+          <label for="pergunta-texto"></label>
+          <input id="pergunta-texto" autocomplete="off" maxlength="60">
+          <p class="pergunta-erro" aria-live="polite"></p>
+        </div>
+        <div class="acoes">
+          <button class="botao secundario" type="button" data-acao="cancelar">Cancelar</button>
+          <button class="botao" type="submit"></button>
+        </div>
+      </form>`;
+    dialog.querySelector("h2").textContent = title;
+    dialog.querySelector("label").textContent = label;
+    dialog.querySelector('button[type="submit"]').textContent = confirmText;
+    const input = dialog.querySelector("input");
+    const error = dialog.querySelector(".pergunta-erro");
+    input.value = value;
+    input.placeholder = placeholder;
+    document.body.appendChild(dialog);
+
+    let answer = null;
+    dialog.querySelector("form").addEventListener("submit", (event) => {
+      event.preventDefault();
+      const text = input.value.trim();
+      const problem = !text ? "Escreva um nome." : validate?.(text);
+      if (problem) {
+        error.textContent = problem;
+        input.focus();
+        return;
+      }
+      answer = text;
+      dialog.close();
+    });
+    dialog.querySelector('[data-acao="cancelar"]').addEventListener("click", () => dialog.close());
+    dialog.addEventListener("close", () => {
+      resolve(answer);
+      dialog.remove();
+    });
+    dialog.showModal();
+    input.focus();
+    input.select();
+  });
+}

@@ -1,94 +1,272 @@
 // Ponto de partida do site: liga as telas e os botões.
+//
+// Telas:
+//   - a "sala" (#/ ou sem nada): as estantes em miniatura;
+//   - uma estante aberta (#/estante/<id>): a estante grande com os livros;
+//   - a página de um livro (#/livro/<id>): abre por cima da tela atual.
 
 import * as db from "./data/db.js";
 import { createShelf } from "./ui/shelf.js";
 import { createReadingShelf } from "./ui/reading-shelf.js";
-import { sortBooks } from "./ui/sort.js";
+import { createRoom } from "./ui/room.js";
+import { roomShelves, shelfInfo, shelfBooks } from "./ui/shelf-defs.js";
 import { openAddBook } from "./ui/add-book.js";
 import { flyStar } from "./ui/favorite-star.js";
 import { openBookDetail, closeBookDetail, isBookDetailOpen } from "./ui/book-detail.js";
-import { flyIntoShelf, reducedMotion } from "./ui/fly-book.js";
+import { flyIntoShelf, flyIntoCard, reducedMotion, done } from "./ui/fly-book.js";
+import { confirmDialog, promptDialog } from "./ui/dialogs.js";
+import { pickShelfBooks } from "./ui/shelf-books-picker.js";
 import { queueSpineColor, SPINE_COLOR_VERSION } from "./services/spine-color.js";
 
 await db.init();
 
+const $ = (id) => document.getElementById(id);
+const emptyMessage = $("estante-vazia");
+const roomEl = $("sala");
+const viewEl = $("vista-estante");
+const cabinet = $("movel-vista"); // o móvel da estante aberta
+const plural = (n) => `${n} livro${n === 1 ? "" : "s"}`;
+
+let currentShelf = null;      // id da estante aberta (null = sala)
+let clickedCard = null;       // miniatura clicada (para a animação de expandir)
+let shelfOpenedByClick = false;
+let clickedSpine = null;      // livro clicado (para a animação da página do livro)
+let bookOpenedByClick = false;
+
 // ---------- Rotas ----------
-// Cada livro tem um endereço próprio (#/livro/<id>). Clicar numa lombada muda
-// o endereço; o site abre/fecha a página do livro conforme o endereço. Assim
-// o botão "voltar" do navegador fecha a página e o link de um livro funciona.
-let clickedSpine = null;
-let openedFromShelf = false;
+// Cada tela tem um endereço próprio. Clicar muda o endereço e o site abre a
+// tela certa; assim o "voltar" do navegador funciona e os links também.
+
+const viewHash = () => (currentShelf ? `#/estante/${currentShelf}` : "#/");
+
+function parseHash() {
+  const book = location.hash.match(/^#\/livro\/([\w-]+)$/);
+  const shelf = location.hash.match(/^#\/estante\/([\w-]+)$/);
+  return { bookId: book?.[1] || null, shelfId: shelf?.[1] || null };
+}
+
+async function route() {
+  const { bookId, shelfId } = parseHash();
+  if (bookId) {
+    const spine = clickedSpine;
+    clickedSpine = null;
+    const ok = await openBookDetail(bookId, {
+      spine: spine || findPlace(bookId),
+      find: findPlace,
+      requestClose: closeBook,
+    });
+    // Livro que não existe mais (ex.: link antigo): volta para a tela atual.
+    if (!ok && !isBookDetailOpen()) history.replaceState(null, "", viewHash());
+    return;
+  }
+  if (isBookDetailOpen()) closeBookDetail();
+  bookOpenedByClick = false;
+  if (shelfId === currentShelf) return;
+  if (shelfId && shelfInfo(shelfId)) await openShelfView(shelfId);
+  else {
+    if (shelfId) history.replaceState(null, "", "#/"); // estante que não existe mais
+    await showRoom();
+  }
+}
 
 const openBook = (id, spine) => {
   clickedSpine = spine;
-  openedFromShelf = true;
+  bookOpenedByClick = true;
   location.hash = `#/livro/${id}`;
 };
 
-function requestClose() {
-  if (openedFromShelf) history.back(); // volta ao endereço da estante
+function closeBook() {
+  if (bookOpenedByClick) history.back(); // volta para a tela de onde abriu
   else {
-    history.replaceState(null, "", location.pathname + location.search);
+    history.replaceState(null, "", viewHash());
     route();
   }
 }
 
-async function route() {
-  const match = location.hash.match(/^#\/livro\/([\w-]+)$/);
-  const spine = clickedSpine;
-  clickedSpine = null;
-  if (match) {
-    const ok = await openBookDetail(match[1], {
-      spine: spine || findPlace(match[1]),
-      find: findPlace,
-      requestClose,
-    });
-    // Livro que não existe mais (ex.: link antigo): volta para a estante.
-    if (!ok && !isBookDetailOpen()) history.replaceState(null, "", location.pathname + location.search);
-  } else {
-    openedFromShelf = false;
-    closeBookDetail();
-  }
+function openShelf(id, card) {
+  clickedCard = card;
+  shelfOpenedByClick = true;
+  location.hash = `#/estante/${id}`;
 }
 
-const emptyMessage = document.getElementById("estante-vazia");
-const readingSection = document.getElementById("secao-lendo");
-const readingShelf = createReadingShelf(document.getElementById("estante-lendo"), { onOpen: openBook });
-const favoritesSection = document.getElementById("secao-favoritos");
-const favoritesShelf = createShelf(document.getElementById("estante-favoritos"), {
-  onOpen: openBook,
-  minShelves: 1,
-});
-const shelf = createShelf(document.getElementById("estante"), { onOpen: openBook });
+function backToRoom() {
+  if (shelfOpenedByClick) history.back();
+  else {
+    history.replaceState(null, "", "#/");
+    route();
+  }
+  shelfOpenedByClick = false;
+}
 
-// Onde o livro está na tela: na "Lendo agora" (capa) ou na estante (lombada).
-const findPlace = (id) => readingShelf.elements.get(id) || shelf.elements.get(id);
+// ---------- Telas ----------
 
-// Última vez que ela mexeu na leitura (para a "Lendo agora" mostrar
-// primeiro o livro mais recente).
-const lastActivity = (b) => b.progressLog?.at(-1)?.date || b.startDate || b.createdAt;
+const room = createRoom(roomEl, { onOpen: openShelf, onCreate: createNewShelf });
+const readingShelf = createReadingShelf($("estante-lendo"), { onOpen: openBook });
+const shelf = createShelf($("estante"), { onOpen: openBook });
+
+// Onde o livro aparece na tela atual (capa na "Lendo agora" ou lombada).
+const findPlace = (id) => readingShelf.elements.get(id) || shelf.elements.get(id) || null;
+
+function renderRoom() {
+  room.render(roomShelves());
+}
+
+function renderView() {
+  const info = shelfInfo(currentShelf);
+  if (!info) return;
+  const books = shelfBooks(currentShelf);
+  $("vista-nome").textContent = info.name;
+  $("vista-placa").textContent = `${info.icon ? info.icon + " " : ""}${info.name}`;
+  $("vista-contagem").textContent = plural(books.length);
+  $("vista-acoes").hidden = !info.custom;
+  const empty = $("vista-vazia");
+  empty.hidden = books.length > 0;
+  empty.textContent = info.custom
+    ? "Essa estante ainda está vazia. ✨ Use “+ Adicionar livros” ou a seção “Estantes” na página de cada livro."
+    : "Nenhum livro aqui por enquanto.";
+  // Mostra o tipo certo de estante antes de desenhar (para medir a largura).
+  $("estante-lendo").hidden = !info.covers;
+  $("estante").hidden = info.covers;
+  readingShelf.render(info.covers ? books : []);
+  shelf.render(info.covers ? [] : books);
+}
 
 function refresh() {
-  const settings = db.getSettings();
-  const onShelf = sortBooks(db.getBooks().filter((b) => b.location === "estante"), settings);
-  // Livros em leitura saem da estante e vão para a "Lendo agora"
-  // (como levar o livro para a mesinha de cabeceira).
-  const reading = onShelf
-    .filter((b) => b.status === "lendo")
-    .sort((a, b) => lastActivity(b).localeCompare(lastActivity(a)));
-  const others = onShelf.filter((b) => b.status !== "lendo");
-  const favorites = onShelf.filter((b) => b.favorite);
-
-  emptyMessage.hidden = onShelf.length > 0;
-  // Mostra cada estante de destaque antes de desenhar (para medir a largura).
-  readingSection.hidden = reading.length === 0;
-  readingShelf.render(reading);
-  favoritesSection.hidden = favorites.length === 0;
-  favoritesShelf.render(favorites);
-  shelf.render(others);
+  emptyMessage.hidden = db.getBooks().some((b) => b.location === "estante") || Boolean(currentShelf);
+  if (currentShelf) {
+    if (shelfInfo(currentShelf)) renderView();
+  } else {
+    renderRoom();
+  }
   ensureSpineColors();
 }
 
+// FLIP: o elemento começa no tamanho/posição de `from` e anima até o seu lugar.
+function growFrom(el, from) {
+  const to = el.getBoundingClientRect();
+  if (!from || !to.width || reducedMotion()) return Promise.resolve();
+  el.style.transformOrigin = "top left";
+  return done(el.animate(
+    [
+      {
+        transform: `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${from.width / to.width}, ${from.height / to.height})`,
+        opacity: 0.35,
+      },
+      { transform: "none", opacity: 1 },
+    ],
+    { duration: 520, easing: "cubic-bezier(.2,.8,.2,1)" }
+  ));
+}
+
+// Ajusta um retângulo medido antes de a página rolar.
+const afterScroll = (rect, scrolled) => rect && new DOMRect(rect.left, rect.top - scrolled, rect.width, rect.height);
+
+// Abre uma estante: a miniatura cresce até virar a estante grande.
+async function openShelfView(id) {
+  const card = clickedCard || room.cards.get(id);
+  clickedCard = null;
+  const from = card?.isConnected ? card.getBoundingClientRect() : null;
+  const scrollBefore = window.scrollY;
+
+  currentShelf = id;
+  roomEl.hidden = true;
+  emptyMessage.hidden = true;
+  viewEl.hidden = false;
+  renderView();
+  viewEl.scrollIntoView({ block: "start" });
+  const scrolled = window.scrollY - scrollBefore;
+
+  viewEl.querySelector(".vista-cabecalho").animate(
+    [{ opacity: 0, transform: "translateY(-8px)" }, { opacity: 1, transform: "none" }],
+    { duration: 400, delay: 200, easing: "ease-out", fill: "backwards" }
+  );
+  await growFrom(cabinet, afterScroll(from, scrolled));
+}
+
+// Volta para a sala: a estante grande encolhe de volta até a miniatura.
+async function showRoom() {
+  const previous = currentShelf;
+  const from = !viewEl.hidden ? cabinet.getBoundingClientRect() : null;
+  const scrollBefore = window.scrollY;
+
+  currentShelf = null;
+  viewEl.hidden = true;
+  roomEl.hidden = false;
+  readingShelf.render([]);
+  shelf.render([]);
+  refresh();
+
+  const card = previous && room.cards.get(previous);
+  if (!card) return;
+  card.scrollIntoView({ block: "center" });
+  const scrolled = window.scrollY - scrollBefore;
+  // A miniatura "encolhe" do tamanho da estante grande até o seu lugar.
+  await growFrom(card, afterScroll(from, scrolled));
+}
+
+// ---------- Estantes criadas por ela ----------
+
+const nameProblem = (exceptId) => (name) =>
+  db.shelfNameTaken(name, exceptId) ? "Já existe uma estante com esse nome." : null;
+
+async function createNewShelf() {
+  const name = await promptDialog({
+    title: "Nova estante",
+    label: "Nome da estante",
+    placeholder: "Ex.: Clube do livro, Para reler, Romances de verão",
+    confirmText: "Criar estante",
+    validate: nameProblem(null),
+  });
+  if (!name) return;
+  const created = await db.addShelf(name);
+  // Abre a estante nova, para ela já colocar livros.
+  openShelf(created.id, room.cards.get(created.id));
+}
+
+$("vista-acoes").addEventListener("click", async (event) => {
+  const action = event.target.closest("[data-acao]")?.dataset.acao;
+  const current = db.getShelf(currentShelf);
+  if (!action || !current) return;
+
+  if (action === "adicionar-livros") {
+    const ids = await pickShelfBooks({
+      title: `Livros em “${current.name}”`,
+      books: db.getBooks().filter((b) => b.location === "estante"),
+      selectedIds: current.bookIds,
+    });
+    if (!ids) return;
+    // Mantém a ordem de quem já estava; os novos entram no fim.
+    const keep = current.bookIds.filter((id) => ids.includes(id));
+    const added = ids.filter((id) => !current.bookIds.includes(id));
+    await db.setShelfBooks(current.id, [...keep, ...added]);
+  } else if (action === "renomear") {
+    const name = await promptDialog({
+      title: "Renomear estante",
+      label: "Novo nome",
+      value: current.name,
+      confirmText: "Salvar",
+      validate: nameProblem(current.id),
+    });
+    if (name) await db.renameShelf(current.id, name);
+  } else if (action === "apagar-estante") {
+    const ok = await confirmDialog({
+      title: "Apagar esta estante?",
+      message: `A estante “${current.name}” some, mas os livros continuam na sua biblioteca (em “Todos os livros” e nas outras estantes).`,
+      confirmText: "Sim, apagar estante",
+      danger: true,
+    });
+    if (!ok) return;
+    await db.deleteShelf(current.id);
+    shelfOpenedByClick = false;
+    history.replaceState(null, "", "#/");
+    route();
+  }
+});
+
+$("btn-sala").addEventListener("click", backToRoom);
+$("btn-adicionar").addEventListener("click", openAddBook);
+
+// ---------- Cores das lombadas ----------
 // Livros com capa e sem cor extraída (ou cuja capa ou regra de extração
 // mudou) entram na fila. A cor escolhida à mão fica em outro campo
 // (spineColorCustom) e tem prioridade, então nunca é substituída.
@@ -105,11 +283,10 @@ function ensureSpineColors() {
 
 db.subscribe(refresh);
 refresh();
-
-document.getElementById("btn-adicionar").addEventListener("click", openAddBook);
-
 window.addEventListener("hashchange", route);
 route();
+
+// ---------- Livro novo chegando ----------
 
 // Espera a rolagem suave terminar (com tempo máximo, se o navegador não avisar).
 function scrollToCenter(el) {
@@ -121,22 +298,36 @@ function scrollToCenter(el) {
   });
 }
 
-// Livro novo: a capa voa da janela de cadastro até o lugar dele (lombada na
-// estante, ou capa na "Lendo agora"). Se for favorito, depois a estrelinha
-// voa até os favoritos.
+// A capa voa da janela de cadastro até o lugar do livro: a lombada (ou capa)
+// na estante aberta, ou a miniatura da estante, se ela estiver na sala.
+// Se for favorito, depois a estrelinha voa até os Favoritos.
 document.addEventListener("livro:adicionado", async ({ detail }) => {
   const book = db.getBook(detail.id);
-  const spine = findPlace(detail.id);
-  if (!book || !spine) return;
-  spine.style.visibility = "hidden"; // escondida até o livro "chegar"
-  await scrollToCenter(spine);
-  if (reducedMotion()) spine.style.visibility = "";
-  else await flyIntoShelf(detail.coverRect, book, spine);
+  if (!book) return;
+  // Cadastrado de dentro de uma estante dela: já entra nessa estante.
+  if (shelfInfo(currentShelf)?.custom) await db.setBookShelves(book.id, [currentShelf]);
 
-  const favoriteSpine = detail.favorite && favoritesShelf.elements.get(detail.id);
-  if (favoriteSpine) {
-    const from = spine.getBoundingClientRect();
-    await scrollToCenter(favoritesSection);
-    flyStar(spine.isConnected ? spine.getBoundingClientRect() : from, favoriteSpine);
+  let landed = null; // onde o livro "pousou" (para a estrelinha sair dali)
+  const spine = findPlace(book.id);
+  if (spine) {
+    spine.style.visibility = "hidden"; // escondida até o livro "chegar"
+    await scrollToCenter(spine);
+    if (reducedMotion()) spine.style.visibility = "";
+    else await flyIntoShelf(detail.coverRect, book, spine);
+    landed = spine;
+  } else if (!currentShelf) {
+    const card = room.cards.get(book.status === "lendo" ? "lendo" : "todos");
+    if (card) {
+      await scrollToCenter(card);
+      if (!reducedMotion()) await flyIntoCard(detail.coverRect, book, card);
+      landed = card;
+    }
+  }
+
+  const favoritesCard = !currentShelf && detail.favorite && room.cards.get("favoritos");
+  if (favoritesCard && landed) {
+    const from = landed.getBoundingClientRect();
+    await scrollToCenter(favoritesCard);
+    flyStar(from, favoritesCard);
   }
 });

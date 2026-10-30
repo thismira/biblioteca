@@ -143,6 +143,11 @@ function build() {
             <div class="detalhe-categorias"></div>
           </section>
 
+          <section class="secao">
+            <h3>Estantes</h3>
+            <div class="detalhe-estantes"></div>
+          </section>
+
           <footer class="detalhe-rodape">
             <button class="botao perigo" type="button" data-acao="excluir">Excluir livro</button>
           </footer>
@@ -261,9 +266,30 @@ function renderAll() {
     known: db.getAllCategories(),
     onChange: (categories) => save({ categories }).then(() => db.ensureCategories(categories)),
   });
+  renderShelves(b);
   quotes.render();
   playlist.render();
   renderSpineOptions();
+}
+
+// Estantes criadas por ela em que o livro está (etiquetas). Escrever um nome
+// novo cria a estante.
+function renderShelves(b) {
+  const shelves = db.getShelves();
+  createCategoryPicker($(".detalhe-estantes"), {
+    selected: shelves.filter((s) => s.bookIds.includes(b.id)).map((s) => s.name),
+    known: shelves.map((s) => s.name),
+    placeholder: "Criar estante e apertar Enter",
+    emptyText: "Este livro ainda não está em nenhuma estante sua",
+    onChange: async (names) => {
+      const ids = [];
+      for (const name of names) {
+        const existing = db.getShelves().find((s) => s.name.toLowerCase() === name.toLowerCase());
+        ids.push(existing ? existing.id : (await db.addShelf(name)).id);
+      }
+      await db.setBookShelves(b.id, ids);
+    },
+  });
 }
 
 function renderCover(b, { failed = false } = {}) {

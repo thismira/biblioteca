@@ -94,3 +94,28 @@ export async function flyIntoShelf(fromRect, book, spine) {
   void spine.offsetWidth; // reinicia a animação de brilho
   spine.classList.add("chegou");
 }
+
+// Livro novo quando ela está na sala: a capa voa da janela de cadastro e
+// "entra" na miniatura da estante, que dá um brilho ao recebê-la.
+export async function flyIntoCard(fromRect, book, card) {
+  const to = card.getBoundingClientRect();
+  const target = { left: to.left + to.width / 2 - 22, top: to.top + to.height * 0.3, width: 44, height: 66 };
+
+  const flier = document.createElement("div");
+  flier.className = "livro-voando";
+  Object.assign(flier.style, px(fromRect));
+  flier.appendChild(coverFace(book));
+  document.body.appendChild(flier);
+
+  await done(flier.animate(
+    [
+      { ...px(fromRect), transform: `${PERSPECTIVE} rotate(0deg)`, opacity: 1 },
+      { ...px(target), transform: `${PERSPECTIVE} rotate(-8deg)`, opacity: 0.85 },
+    ],
+    { duration: 650, easing: "cubic-bezier(.5,0,.3,1)", fill: "forwards" }
+  ));
+  flier.remove();
+  card.classList.remove("chegou");
+  void card.offsetWidth; // reinicia a animação de brilho
+  card.classList.add("chegou");
+}
