@@ -16,10 +16,14 @@
   --creme: #FFFAF8;
   --linha: #E8C3CB;
 
-  /* Estante pintada */
-  --estante: #F3DDE0;
-  --estante-sombra: #D9B3BA;
-  --estante-fundo: #EFD3D8;
+  /* Estante: madeira pintada de rosa antigo */
+  --tinta: #E2B3BD;
+  --tinta-clara: #F3D6DC;
+  --tinta-escura: #C38D99;
+  --nicho: #C8919D;        /* fundo interno, mais escuro para os livros saltarem */
+
+  /* Papel de parede: listras finas e florzinhas, desenhado em SVG */
+  --papel-parede: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cg fill='%23E2A9B6' fill-opacity='.16'%3E%3Crect x='0' width='2' height='80'/%3E%3Crect x='40' width='1' height='80'/%3E%3C/g%3E%3Cg transform='translate(20 24)'%3E%3Cg fill='%23E39DAE' fill-opacity='.45'%3E%3Ccircle cx='0' cy='-2.6' r='1.9'/%3E%3Ccircle cx='2.5' cy='-0.8' r='1.9'/%3E%3Ccircle cx='1.5' cy='2.1' r='1.9'/%3E%3Ccircle cx='-1.5' cy='2.1' r='1.9'/%3E%3Ccircle cx='-2.5' cy='-0.8' r='1.9'/%3E%3C/g%3E%3Ccircle r='1.2' fill='%23EDC98F' fill-opacity='.8'/%3E%3Cellipse cx='4.5' cy='5' rx='2.8' ry='1.1' transform='rotate(35 4.5 5)' fill='%23A9C2A3' fill-opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(60 64) scale(.8)'%3E%3Cg fill='%23E39DAE' fill-opacity='.4'%3E%3Ccircle cx='0' cy='-2.6' r='1.9'/%3E%3Ccircle cx='2.5' cy='-0.8' r='1.9'/%3E%3Ccircle cx='1.5' cy='2.1' r='1.9'/%3E%3Ccircle cx='-1.5' cy='2.1' r='1.9'/%3E%3Ccircle cx='-2.5' cy='-0.8' r='1.9'/%3E%3C/g%3E%3Ccircle r='1.2' fill='%23EDC98F' fill-opacity='.8'/%3E%3Cellipse cx='-4.5' cy='5' rx='2.8' ry='1.1' transform='rotate(-35 -4.5 5)' fill='%23A9C2A3' fill-opacity='.5'/%3E%3C/g%3E%3C/svg%3E");
 
   /* Fontes */
   --fonte-titulo: "Cormorant Garamond", Georgia, serif;
@@ -34,7 +38,11 @@
 html, body { margin: 0; }
 
 body {
-  background: var(--rosa-nevoa);
+  background-color: var(--rosa-nevoa);
+  /* luz quente vinda de cima + papel de parede */
+  background-image:
+    radial-gradient(ellipse 120% 60% at 50% 0, rgba(255, 250, 246, 0.85), rgba(255, 250, 246, 0) 70%),
+    var(--papel-parede);
   color: var(--texto);
   font-family: var(--fonte-texto);
   font-size: 16px;
@@ -53,32 +61,39 @@ a { color: var(--acento); }
 
 /* ---------- Cabeçalho ---------- */
 .topo {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px 20px;
-  padding: 20px clamp(16px, 4vw, 48px);
+  text-align: center;
+  padding: 40px 16px 12px;
 }
 
 .topo h1 {
-  font-size: clamp(2rem, 4vw, 2.8rem);
-  margin-right: auto;
+  font-size: clamp(2.8rem, 7vw, 4.4rem);
+  letter-spacing: 0.01em;
 }
 
-.topo h1 small {
+.ornamento {
   display: block;
-  font-family: var(--fonte-texto);
-  font-size: 0.85rem;
-  font-weight: 400;
-  color: var(--texto-suave);
-  letter-spacing: 0.04em;
+  width: min(240px, 70vw);
+  height: 24px;
+  margin: 4px auto 2px;
+  color: var(--acento);
 }
 
-.topo nav {
+.subtitulo {
+  margin: 0;
+  font-family: var(--fonte-titulo);
+  font-style: italic;
+  font-size: 1.2rem;
+  color: var(--texto-suave);
+}
+
+/* Barra de ações acima da estante */
+.barra {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  justify-content: flex-end;
   align-items: center;
+  gap: 10px;
+  margin-bottom: 22px;
 }
 
 /* ---------- Botões ---------- */
@@ -184,7 +199,12 @@ dialog::backdrop {
   font-family: var(--fonte-titulo);
   font-style: italic;
   font-size: 1.3rem;
-  padding: 24px 16px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto 22px;
+  padding: 6px 22px;
+  border-radius: 999px;
+  background: rgba(255, 250, 248, 0.8);
 }
 
 @media (prefers-reduced-motion: reduce) {

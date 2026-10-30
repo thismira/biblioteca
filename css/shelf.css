@@ -1,22 +1,86 @@
 /* ==========================================================
-   Estante pintada em creme/rosa e lombadas dos livros
+   Estante (móvel de madeira pintada) e lombadas dos livros
    ========================================================== */
 
+:root {
+  /* Veios de madeira sob a pintura (horizontal para tábuas, vertical para laterais) */
+  --veio-h: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='300'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.003 0.22' numOctaves='3' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.35 0 0 0 0 0.12 0 0 0 0 0.18 0 0 0 0.45 -0.13'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  --veio-v: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='600'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.22 0.003' numOctaves='3' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.35 0 0 0 0 0.12 0 0 0 0 0.18 0 0 0 0.45 -0.13'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  /* Granulado fino de papel/tecido para as lombadas */
+  --ruido: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.05 0 0 0 0 0.05 0 0 0 0.6 -0.14'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --dourado: #C9A35A;
+}
+
 .area-estante {
-  padding: 0 clamp(16px, 4vw, 48px) 48px;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 clamp(16px, 4vw, 48px) 72px;
 }
 
+/* ---------- O móvel ---------- */
+.movel {
+  position: relative;
+}
+
+/* Cornija: o "chapéu" moldurado no topo da estante */
+.movel-topo {
+  position: relative;
+  z-index: 2;
+  height: 38px;
+  margin: 0 -14px;
+  border-radius: 6px 6px 3px 3px;
+  background:
+    var(--veio-h),
+    linear-gradient(to bottom,
+      #F6DFE3 0, #E8BEC7 7px,       /* borda de cima */
+      #B5808C 8px, #CB98A3 10px,    /* sulco */
+      #EBC5CC 21px, #F5DADF 23px,   /* curva da moldura */
+      #D3A2AD 28px, var(--tinta) 29px,
+      #D0A0AB 38px);
+  box-shadow: 0 5px 8px -2px rgba(74, 44, 53, 0.35);
+}
+
+/* Corpo: as laterais são o padding pintado ao redor das prateleiras */
 .estante {
-  --prateleira-altura: 260px;
-  background: var(--estante);
-  border-radius: 14px;
-  padding: 14px;
+  --prateleira-altura: 276px;
+  position: relative;
+  padding: 16px 22px 0;
+  background: var(--veio-v), var(--tinta);
   box-shadow:
-    var(--sombra-suave),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+    inset 3px 0 0 rgba(255, 255, 255, 0.35),
+    inset -3px 0 0 rgba(90, 40, 55, 0.12),
+    0 30px 50px -20px rgba(74, 44, 53, 0.45);
 }
 
-/* Cada prateleira: um "nicho" com fundo mais escuro e uma tábua embaixo. */
+/* Rodapé com pezinhos */
+.movel-base {
+  position: relative;
+  z-index: 2;
+  height: 34px;
+  margin: 0 -8px;
+  border-radius: 2px 2px 4px 4px;
+  background:
+    var(--veio-h),
+    linear-gradient(to bottom,
+      #F3D6DC 0, var(--tinta) 4px,
+      #D7A7B2 18px, #B98591 19px,
+      #D3A2AD 21px, #C08A96 34px);
+  box-shadow: 0 16px 22px -10px rgba(74, 44, 53, 0.45);
+}
+.movel-base::before,
+.movel-base::after {
+  content: "";
+  position: absolute;
+  bottom: -12px;
+  width: 52px;
+  height: 12px;
+  border-radius: 0 0 8px 8px;
+  background: linear-gradient(to bottom, #B07A87, #C893A0 40%, #A9737F);
+}
+.movel-base::before { left: 26px; }
+.movel-base::after { right: 26px; }
+
+/* ---------- Prateleiras (nichos) ---------- */
 .prateleira {
   position: relative;
   display: flex;
@@ -24,28 +88,33 @@
   gap: 3px;               /* igual ao GAP do shelf.js */
   height: var(--prateleira-altura);
   padding: 0 18px;
-  margin-bottom: 18px;    /* espaço da tábua */
+  margin-bottom: 20px;    /* espaço da tábua */
   background:
-    linear-gradient(to bottom, rgba(74, 44, 53, 0.10), rgba(74, 44, 53, 0) 28px),
-    var(--estante-fundo);
-  border-radius: 6px 6px 0 0;
+    /* sombra da prateleira de cima e das laterais */
+    linear-gradient(to bottom, rgba(60, 20, 32, 0.42) 0, rgba(60, 20, 32, 0.12) 18px, rgba(60, 20, 32, 0) 46px),
+    linear-gradient(to right, rgba(60, 20, 32, 0.25) 0, rgba(60, 20, 32, 0) 22px,
+                    rgba(60, 20, 32, 0) calc(100% - 22px), rgba(60, 20, 32, 0.25) 100%),
+    var(--veio-h),
+    var(--nicho);
 }
 
-/* Tábua da prateleira */
+/* Tábua: encaixada nas laterais, com a borda da frente iluminada */
 .prateleira::after {
   content: "";
   position: absolute;
-  left: -6px;
-  right: -6px;
-  bottom: -16px;
-  height: 16px;
-  background: linear-gradient(to bottom, #FAEBED 0, var(--estante) 35%, #E6C4CA 100%);
-  border-radius: 3px;
-  box-shadow: 0 6px 10px -4px rgba(74, 44, 53, 0.30);
+  left: -22px;
+  right: -22px;
+  bottom: -20px;
+  height: 20px;
+  background:
+    var(--veio-h),
+    linear-gradient(to bottom,
+      #F6DFE3 0, #EBC4CC 3px,       /* topo da tábua, visto de cima */
+      var(--tinta) 5px, var(--tinta) 14px,
+      #C793A0 20px);
+  box-shadow: 0 9px 10px -6px rgba(50, 15, 25, 0.5);
   z-index: 1;
 }
-
-.prateleira:last-child { margin-bottom: 16px; }
 
 /* ---------- Lombada ---------- */
 .lombada {
@@ -53,77 +122,142 @@
   flex: none;
   border: none;
   margin: 0;
-  padding: 10px 0;
+  padding: 0;
   cursor: pointer;
-  border-radius: 3px 3px 1px 1px;
-  background-color: var(--cor);
-  /* brilho à esquerda e sombra à direita dão volume de livro */
-  background-image: linear-gradient(90deg,
-    rgba(255, 255, 255, 0.22) 0,
-    rgba(255, 255, 255, 0) 22%,
-    rgba(0, 0, 0, 0) 75%,
-    rgba(0, 0, 0, 0.18) 100%);
+  border-radius: 3px 3px 2px 2px;
   color: var(--cor-texto);
-  box-shadow: 1px 0 2px rgba(74, 44, 53, 0.25);
+  background-color: var(--cor);
+  background-image:
+    /* volume: bordas escuras, brilho perto da esquerda (lombada arredondada) */
+    linear-gradient(90deg,
+      rgba(30, 10, 15, 0.30) 0,
+      rgba(255, 255, 255, 0.22) 9%,
+      rgba(255, 255, 255, 0.08) 26%,
+      rgba(0, 0, 0, 0) 50%,
+      rgba(30, 10, 15, 0.10) 80%,
+      rgba(30, 10, 15, 0.34) 100%),
+    /* trama de tecido */
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.035) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px 3px),
+    var(--ruido);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.25),
+    2px 0 4px rgba(40, 10, 20, 0.35);
   overflow: hidden;
 }
 
-/* Filetes decorativos perto do topo e da base, como em lombadas reais */
+/* Enfeites de cabeça e pé — 4 acabamentos, como coleções diferentes */
 .lombada::before,
 .lombada::after {
   content: "";
   position: absolute;
-  left: 3px;
-  right: 3px;
-  height: 3px;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+}
+
+/* 0: filetes duplos */
+.lombada[data-estilo="0"]::before,
+.lombada[data-estilo="0"]::after {
+  height: 4px;
   border-top: 1px solid currentColor;
   border-bottom: 1px solid currentColor;
-  opacity: 0.3;
+  opacity: 0.35;
 }
-.lombada::before { top: 6px; }
-.lombada::after { bottom: 6px; }
+.lombada[data-estilo="0"]::before { top: 12px; }
+.lombada[data-estilo="0"]::after { bottom: 12px; }
 
+/* 1: faixas em tom mais escuro */
+.lombada[data-estilo="1"]::before,
+.lombada[data-estilo="1"]::after {
+  height: 14px;
+  background: color-mix(in srgb, var(--cor) 62%, #2A1218);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+.lombada[data-estilo="1"]::before { top: 10px; }
+.lombada[data-estilo="1"]::after { bottom: 10px; }
+
+/* 2: filetes dourados */
+.lombada[data-estilo="2"]::before,
+.lombada[data-estilo="2"]::after {
+  height: 5px;
+  border-top: 1.5px solid var(--dourado);
+  border-bottom: 1px solid var(--dourado);
+  opacity: 0.9;
+}
+.lombada[data-estilo="2"]::before { top: 11px; }
+.lombada[data-estilo="2"]::after { bottom: 11px; }
+
+/* 3: moldura em volta do título, filete simples nas pontas */
+.lombada[data-estilo="3"]::before,
+.lombada[data-estilo="3"]::after {
+  height: 1px;
+  background: currentColor;
+  opacity: 0.35;
+}
+.lombada[data-estilo="3"]::before { top: 14px; }
+.lombada[data-estilo="3"]::after { bottom: 14px; }
+.lombada[data-estilo="3"] .lombada-titulo {
+  padding: 3px 7px;
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 45%, transparent);
+}
+
+/* ---------- Texto da lombada ----------
+   O texto é montado na HORIZONTAL numa caixa do tamanho da lombada
+   "deitada" e depois girado 90°. Assim valem as regras normais de texto
+   (centralizar, quebrar linha, "…"), que são mais confiáveis.
+   Um espaçador invisível do tamanho do autor, do outro lado,
+   faz o título ficar no meio do livro. */
 .lombada-texto {
-  writing-mode: vertical-rl;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--alt);
+  height: var(--larg);
+  transform: translate(-50%, -50%) rotate(90deg);
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  height: 100%;
-  width: 100%;
-  padding: 6px 0;
-  overflow: hidden;
+  padding: 0 22px 0 24px;
 }
 
-.lombada-autor {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.lombada-espaco {
+  flex: 0 100 var(--autor-len, 0px);  /* encolhe antes do título */
+  min-width: 0;
 }
 
-/* Título: até 2 linhas em lombadas grossas (o JS define --linhas). */
 .lombada-titulo {
+  margin: 0 auto;   /* centraliza no espaço disponível */
+  flex: none;       /* não encolhe: o tamanho já foi calculado no shelf.js */
+  max-width: var(--titulo-max, 100%);
   font-family: var(--fonte-titulo);
   font-weight: 700;
   font-size: var(--fs-titulo, 14px);
   line-height: 1.05;
-  max-height: 74%;
+  text-align: center;
+  text-wrap: balance;   /* duas linhas de tamanho parecido */
   overflow: hidden;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: var(--linhas, 1);
   line-clamp: var(--linhas, 1);
-  text-align: center;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
 }
 
 .lombada-autor {
+  flex: none;
+  margin-left: 12px;   /* AUTHOR_GAP do shelf.js */
+  max-width: 40%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-family: var(--fonte-texto);
   font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   opacity: 0.85;
-  max-height: 38%;
-  flex: none;
 }
 
 .lombada:focus-visible {

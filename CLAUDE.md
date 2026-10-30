@@ -41,11 +41,27 @@ em JSON.
 - `js/utils/` — funções de cor e utilidades.
 
 ## Visual
-- Paleta: fundo `#FDF1F1`, painéis `#F5DADF`, destaques `#FFD1DC`, texto
-  `#4A2C35`, botões `#9E4A65`. Estante pintada creme/rosa.
+- Título do site: **M’s Library**, centralizado, com ornamento em SVG.
+- Paleta: fundo `#FDF1F1` com papel de parede (listras e florzinhas em SVG),
+  painéis `#F5DADF`, destaques `#FFD1DC`, texto `#4A2C35`, botões `#9E4A65`.
+- Estante: móvel de madeira pintada em rosa antigo (`--tinta`, `--nicho`),
+  com cornija, laterais, tábuas, rodapé com pés e veios suaves (SVG
+  `feTurbulence` em `--veio-h`/`--veio-v`). Interior mais escuro para
+  dar contraste aos livros.
+- Lombadas realistas: volume em degradê, trama de tecido e granulado; 4
+  acabamentos fixos por livro (`data-estilo` 0–3). O texto é montado na
+  horizontal e girado 90°; título centralizado, autor em maiúsculas no pé.
+  O tamanho da letra é calculado medindo o texto (`measureText`) em
+  `js/ui/shelf.js`.
 - Fontes: Cormorant Garamond (títulos, lombadas, quotes) + Nunito Sans
   (interface).
-- Cores definidas como variáveis em `:root` no `css/base.css`.
+- Cores definidas como variáveis em `:root` (`css/base.css` e `css/shelf.css`).
+
+## Preview local
+O macOS impede o servidor iniciado pelo preview de ler a pasta Documentos.
+Por isso o servidor é ligado pelo terminal (`python3 -m http.server 8080`
+dentro da pasta) e o `.claude/launch.json` só se conecta a
+`http://localhost:8080`.
 
 ## Formato de um livro
 ```

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Minha Biblioteca</title>
+  <title>M’s Library</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,16 +14,36 @@
 </head>
 <body>
   <header class="topo">
-    <h1>Minha Biblioteca <small>um cantinho para cada história</small></h1>
-    <nav>
-      <button class="botao" type="button" id="btn-adicionar">+ Adicionar livro</button>
-    </nav>
+    <h1>M’s Library</h1>
+    <svg class="ornamento" viewBox="0 0 240 24" aria-hidden="true">
+      <g fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round">
+        <path d="M14 12 H98" />
+        <path d="M142 12 H226" />
+        <path d="M98 12 q7 -8 14 0 q-7 8 -14 0" />
+        <path d="M142 12 q-7 -8 -14 0 q7 8 14 0" />
+      </g>
+      <g fill="currentColor">
+        <circle cx="120" cy="12" r="2.6" />
+        <circle cx="120" cy="5" r="1.1" />
+        <circle cx="120" cy="19" r="1.1" />
+        <circle cx="8" cy="12" r="1.6" />
+        <circle cx="232" cy="12" r="1.6" />
+      </g>
+    </svg>
+    <p class="subtitulo">um cantinho para cada história</p>
   </header>
 
   <main id="app">
     <section class="area-estante" aria-label="Estante">
+      <div class="barra">
+        <button class="botao" type="button" id="btn-adicionar">+ Adicionar livro</button>
+      </div>
       <p class="vazio" id="estante-vazia">Sua estante está esperando o primeiro livro…</p>
-      <div id="estante"></div>
+      <div class="movel">
+        <div class="movel-topo" aria-hidden="true"></div>
+        <div id="estante"></div>
+        <div class="movel-base" aria-hidden="true"></div>
+      </div>
     </section>
   </main>
 

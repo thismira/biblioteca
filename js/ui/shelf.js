@@ -19,34 +19,66 @@ export function spineSize(book) {
   const t = Math.min(Math.max((pages - 100) / 700, 0), 1);
   const jitter = (hashString(book.id) % 13) - 6; // variação fixa de -6 a +6 px
   return {
-    height: Math.round(150 + 80 * t + jitter),
+    height: Math.round(160 + 80 * t + jitter),
     width: Math.round(Math.min(Math.max(12 + Math.sqrt(pages) * 1.6, 22), 60)),
   };
 }
 
-// Estima quanto texto cabe na lombada e escolhe tamanho da letra,
-// número de linhas do título e se o autor aparece completo ou só o sobrenome.
-// (Estimativa: cada letra ocupa ~0,52 do tamanho da fonte na Cormorant
-// e ~0,55 na Nunito.)
-function fitText(book, width, height) {
-  const usable = height - 44; // descontando margens e filetes
-  const authorMax = usable * 0.38;
-  let author = book.author || "";
-  if (author.length * 10 * 0.55 > authorMax) author = author.split(/\s+/).pop();
-  const authorLen = Math.min(author.length * 10 * 0.55, authorMax);
-  const titleSpace = usable - authorLen;
+// "Régua" do navegador: mede a largura real de um texto numa fonte.
+const ruler = document.createElement("canvas").getContext("2d");
+function measure(text, font) {
+  ruler.font = font;
+  return ruler.measureText(text).width;
+}
 
-  // Calcula o maior tamanho de letra possível em 1 linha e em 2 linhas
-  // e fica com o jeito que deixa a letra maior.
-  const base = Math.min(Math.max(width * 0.42, 11), 17);
-  const perChar = book.title.length * 0.52;
-  const oneLine = Math.max(11, Math.min(base, titleSpace / perChar));
-  const twoLines = Math.min(base, (width - 8) / 2.2, (2 * titleSpace) / perChar);
-  const oneLineFits = titleSpace / perChar >= 11;
-  if (twoLines >= 10 && (twoLines > oneLine || !oneLineFits)) {
-    return { fontSize: twoLines, lines: 2, author };
+const AUTHOR_GAP = 12; // respiro entre título e autor (igual ao CSS)
+const TITLE_FONT = (size) => `700 ${size}px "Cormorant Garamond"`;
+// Autor: maiúsculas de 10px com espaçamento de 0,06em entre letras.
+const authorWidth = (text) =>
+  measure(text.toUpperCase(), '700 10px "Nunito Sans"') + text.length * 0.6;
+
+// Largura da linha mais longa quando o título é dividido em 2 linhas
+// do jeito mais equilibrado possível (medido no tamanho `size`).
+function longestOfTwoLines(title, size) {
+  const words = title.split(/\s+/);
+  if (words.length < 2) return measure(title, TITLE_FONT(size));
+  let best = Infinity;
+  for (let i = 1; i < words.length; i++) {
+    const a = measure(words.slice(0, i).join(" "), TITLE_FONT(size));
+    const b = measure(words.slice(i).join(" "), TITLE_FONT(size));
+    best = Math.min(best, Math.max(a, b));
   }
-  return { fontSize: oneLine, lines: 1, author };
+  return best;
+}
+
+// Decide o tamanho da letra, o número de linhas do título e se o autor
+// aparece completo ou só o sobrenome, medindo o texto de verdade.
+function fitText(book, width, height, framed) {
+  const usable = height - 50; // descontando margens e enfeites
+  const authorMax = usable * 0.36;
+  let author = book.author || "";
+  if (authorWidth(author) > authorMax) author = author.split(/\s+/).pop();
+  const authorLen = author ? Math.min(authorWidth(author), authorMax) + AUTHOR_GAP : 0;
+  // O título usa o espaço que sobra ao lado do autor. No CSS, o espaçador
+  // do outro lado encolhe se faltar espaço: assim o título fica o mais
+  // centralizado possível, sem nunca encostar no autor.
+  // A moldura do acabamento 3 ocupa 7px de cada lado do título.
+  const titleSpace = usable - authorLen - (framed ? 14 : 0);
+
+  // Maior letra possível em 1 linha e em 2 linhas; fica com a maior,
+  // mas prefere 2 linhas quando 1 linha não cabe nem com letra mínima.
+  const base = Math.min(Math.max(width * 0.42, 11), 17);
+  const oneLineIdeal = base * (titleSpace / measure(book.title, TITLE_FONT(base)));
+  const oneLine = Math.max(11, Math.min(base, oneLineIdeal));
+  const twoLines = Math.min(
+    base,
+    (width - 8) / 2.2,
+    base * (titleSpace / longestOfTwoLines(book.title, base))
+  );
+  if (twoLines >= 10 && (twoLines > oneLine || oneLineIdeal < 11)) {
+    return { fontSize: twoLines, lines: 2, author, authorLen, titleSpace };
+  }
+  return { fontSize: oneLine, lines: 1, author, authorLen, titleSpace };
 }
 
 export function spineColor(book) {
@@ -58,7 +90,8 @@ function createSpine(book, onOpen) {
   el.type = "button";
   el.className = "lombada";
   el.dataset.id = book.id;
-  el.innerHTML = `<span class="lombada-texto"><span class="lombada-titulo"></span><span class="lombada-autor"></span></span>`;
+  el.dataset.estilo = hashString(book.id + ":estilo") % 4; // acabamento fixo por livro
+  el.innerHTML = `<span class="lombada-texto"><span class="lombada-espaco"></span><span class="lombada-titulo"></span><span class="lombada-autor"></span></span>`;
   el.addEventListener("click", () => onOpen(el.dataset.id));
   return el;
 }
@@ -68,11 +101,16 @@ function updateSpine(el, book) {
   const bg = spineColor(book);
   el.style.width = width + "px";
   el.style.height = height + "px";
+  el.style.setProperty("--alt", height + "px");   // a caixa de texto gira 90°,
+  el.style.setProperty("--larg", width + "px");   // então largura e altura trocam
   el.style.setProperty("--cor", bg);
   el.style.setProperty("--cor-texto", readableTextColor(bg));
-  const { fontSize, lines, author } = fitText(book, width, height);
+  const framed = el.dataset.estilo === "3";
+  const { fontSize, lines, author, authorLen, titleSpace } = fitText(book, width, height, framed);
   el.style.setProperty("--fs-titulo", fontSize + "px");
   el.style.setProperty("--linhas", lines);
+  el.style.setProperty("--autor-len", authorLen + "px");
+  el.style.setProperty("--titulo-max", titleSpace + (framed ? 14 : 0) + "px");
   el.querySelector(".lombada-titulo").textContent = book.title;
   el.querySelector(".lombada-autor").textContent = author;
   el.setAttribute("aria-label", `${book.title}${book.author ? ", de " + book.author : ""}`);
@@ -161,6 +199,9 @@ export function createShelf(container, { onOpen }) {
       layout();
     });
   }).observe(container);
+
+  // As fontes do Google chegam depois da página: recalcula quando carregarem.
+  document.fonts.ready.then(() => layout());
 
   return {
     render(list) {
