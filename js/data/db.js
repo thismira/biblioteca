@@ -104,6 +104,23 @@ export async function deleteBook(id) {
   });
 }
 
+// Todas as categorias conhecidas: as criadas por ela + as usadas nos livros.
+export function getAllCategories() {
+  const all = new Set(settings.categories);
+  books.forEach((b) => b.categories.forEach((c) => all.add(c)));
+  return [...all].sort((a, b) => a.localeCompare(b, "pt-BR"));
+}
+
+// Guarda categorias novas para serem sugeridas nos próximos livros.
+export async function ensureCategories(names) {
+  const all = new Set(settings.categories);
+  names.forEach((n) => all.add(n));
+  if (all.size === settings.categories.length) return;
+  await updateSettings({
+    categories: [...all].sort((a, b) => a.localeCompare(b, "pt-BR")),
+  });
+}
+
 export async function updateSettings(changes) {
   settings = { ...settings, ...changes };
   await store.saveSettings(settings);

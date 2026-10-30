@@ -31,13 +31,20 @@ em JSON.
 
 ## Estrutura
 - `index.html` — página única.
-- `css/` — `base.css` (cores, fontes, componentes), `shelf.css`, `detail.css`,
-  `wishlist.css`.
+- `css/` — `base.css` (cores, fontes, componentes), `shelf.css`,
+  `add-book.css` (cadastro e chips de categoria), `detail.css`, `wishlist.css`.
 - `js/main.js` — inicialização e rotas.
 - `js/data/` — `db.js` (fachada) e `local-store.js` (implementação).
 - `js/services/` — Open Library, cor da lombada, Spotify, Amazon.
+  - `openlibrary.js`: busca sem pedir a lista completa de ISBNs (pode ter
+    milhares); ISBN vem da edição principal ou de `findIsbn()` ao escolher.
+    `suggestCategories()` traduz assuntos em inglês para categorias em PT.
 - `js/ui/` — estante, ordenação, FLIP, arrastar, página do livro, cadastro,
   lista de desejos, backup, diálogos.
+  - `category-picker.js`: chips de categoria reutilizável (cadastro e
+    página do livro).
+  - Atenção em formulários: use `form.elements.title`, não `form.title`
+    (que é o atributo title do próprio formulário).
 - `js/utils/` — funções de cor e utilidades.
 
 ## Visual
