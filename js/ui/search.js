@@ -15,6 +15,7 @@ const STATUS = { "quero ler": "Quero ler", lendo: "Lendo", lido: "Lido" };
 export const plain = (text) => String(text || "").normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
 
 function statusText(book) {
+  if (book.location === "desejos") return "♡ Na lista de desejos";
   if (book.status === "lendo" && book.pages) {
     return `Lendo · ${Math.min(100, Math.round(((book.currentPage || 0) / book.pages) * 100))}%`;
   }
@@ -29,7 +30,7 @@ export function searchLibrary(query) {
   const shelves = db.getShelves();
   const results = [];
   for (const book of db.getBooks()) {
-    if (book.location !== "estante") continue;
+    // estantes e lista de desejos
     const title = plain(book.title);
     const author = plain(book.author);
     const extra = plain([...book.categories, ...shelves.filter((s) => s.bookIds.includes(book.id)).map((s) => s.name)].join(" "));

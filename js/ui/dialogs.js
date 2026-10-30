@@ -100,3 +100,14 @@ export function promptDialog({ title, label, value = "", placeholder = "", confi
     input.select();
   });
 }
+
+// Pergunta com várias respostas (botões). Devolve o `value` escolhido ou
+// null se ela fechar com Esc.
+export async function chooseDialog({ title, message, options }) {
+  const answer = await openDialog({
+    title,
+    message,
+    buttons: options.map(({ text, value }, i) => ({ text, value, kind: i === 0 ? "" : "secundario" })),
+  });
+  return options.some((o) => o.value === answer) ? answer : null;
+}

@@ -40,8 +40,9 @@ soltar, lista de desejos com link para a Amazon UK e backup em JSON.
 - `index.html` — página única.
 - `css/` — `base.css` (cores, fontes, componentes), `shelf.css`,
   `room.css` (sala, cabeçalho da estante aberta, escolher livros),
+  `wishlist.css` (lista de desejos),
   `add-book.css` (cadastro e chips de categoria), `detail.css` (página do
-  livro, confirmações, editor de foto), `wishlist.css`.
+  livro, confirmações, editor de foto).
 - `js/main.js` — inicialização, telas e rotas: `#/` (sala), `#/estante/<id>`
   (estante aberta), `#/livro/<id>` (página do livro por cima da tela
   atual). "Voltar" do navegador funciona em todas.
@@ -110,6 +111,18 @@ soltar, lista de desejos com link para a Amazon UK e backup em JSON.
     lugares dos livros daquela estante são reordenados) e `saveMove()`
     (encaixa entre os mesmos vizinhos visíveis — funciona com filtro de
     nota). A estante não é redesenhada no meio de um arraste.
+  - Lista de desejos: livros com `location: "desejos"` (não aparecem nas
+    estantes). Na sala é um cartão próprio (papel com fita, `room.js`);
+    abre como a "estante" especial `#/estante/desejos` (`WISHLIST` e
+    `wishlistBooks()` em shelf-defs.js). `wishlist.js` desenha os cartões
+    (reaproveitados, para o campo de preço não perder o foco): capa, link
+    "Ver na Amazon UK" (`services/amazon.js`: ISBN ou título+autor, só um
+    link — nunca consultar a Amazon), preço visto (£) + data (hoje ao
+    preencher o preço), "Comprei!" (pergunta Físico/Kindle com
+    `chooseDialog`, a capa voa até "← Sala" e o livro vira "quero ler" na
+    estante) e "remover" (com confirmação). No cadastro: "Guardar em:
+    Estante / Lista de desejos" (`openAddBook(query, { destination })`).
+    A busca da sala também acha desejos.
   - `shelf-books-picker.js`: lista com caixinhas para escolher os livros de
     uma estante dela: busca sem acentos (título, autor, categoria), filtros
     por status, categoria e nota, "Só os marcados", e "Marcar/Desmarcar
@@ -146,8 +159,9 @@ soltar, lista de desejos com link para a Amazon UK e backup em JSON.
   - `spine-photo.js`: usa `pickAndCrop`; gira sozinho se a lombada estiver
     deitada, reduz para 360px de
     altura em JPEG (~10–20 KB, data URL em `spinePhoto`).
-  - `dialogs.js`: `confirmDialog()`, `alertDialog()` e `promptDialog()`
-    (pede um texto, com validação) no visual do site.
+  - `dialogs.js`: `confirmDialog()`, `alertDialog()`, `promptDialog()`
+    (pede um texto, com validação) e `chooseDialog()` (várias respostas)
+    no visual do site.
     Use sempre `confirmDialog({ danger: true })` antes de apagar dados.
   - `cover-image.js`: `setCoverImage(img, url, { onFail })` — use SEMPRE
     para mostrar capas. Tenta de novo após 1,5 s e 4 s (o servidor de capas

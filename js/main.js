@@ -2,20 +2,22 @@
 //
 // Telas:
 //   - a "sala" (#/ ou sem nada): as estantes em miniatura;
-//   - uma estante aberta (#/estante/<id>): a estante grande com os livros;
+//   - uma estante aberta (#/estante/<id>): a estante grande com os livros
+//     (a lista de desejos é a "estante" especial #/estante/desejos);
 //   - a página de um livro (#/livro/<id>): abre por cima da tela atual.
 
 import * as db from "./data/db.js";
 import { createShelf } from "./ui/shelf.js";
 import { createReadingShelf } from "./ui/reading-shelf.js";
 import { createRoom } from "./ui/room.js";
-import { roomShelves, shelfInfo, shelfBooks, canSort, shelvesContaining } from "./ui/shelf-defs.js";
+import { roomShelves, shelfInfo, shelfBooks, canSort, shelvesContaining, wishlistBooks } from "./ui/shelf-defs.js";
+import { createWishlist } from "./ui/wishlist.js";
 import { SORT_OPTIONS } from "./ui/sort.js";
 import { flipReorder } from "./ui/flip.js";
 import { openAddBook } from "./ui/add-book.js";
 import { openBookDetail, closeBookDetail, isBookDetailOpen } from "./ui/book-detail.js";
 import { flyIntoShelf, flyIntoCard, reducedMotion, done } from "./ui/fly-book.js";
-import { confirmDialog, promptDialog } from "./ui/dialogs.js";
+import { confirmDialog, promptDialog, chooseDialog } from "./ui/dialogs.js";
 import { pickShelfBooks } from "./ui/shelf-books-picker.js";
 import { createSearch } from "./ui/search.js";
 import { enableDragAndDrop } from "./ui/drag.js";
@@ -120,15 +122,45 @@ const readingShelf = createReadingShelf($("estante-lendo"), { onOpen: openBook }
 const shelf = createShelf($("estante"), { onOpen: openBook });
 
 // Onde o livro aparece na tela atual (capa na "Lendo agora" ou lombada).
-const findPlace = (id) => readingShelf.elements.get(id) || shelf.elements.get(id) || null;
+const wishlistEl = $("lista-desejos");
+const wishlist = createWishlist(wishlistEl, {
+  onOpen: openBook,
+  onBought: buyWish,
+  onRemove: removeWish,
+  save: (id, changes) => db.updateBook(id, changes),
+});
+
+const findPlace = (id) =>
+  readingShelf.elements.get(id) || shelf.elements.get(id) || wishlist.covers.get(id) || null;
+
+// O "móvel" que cresce/encolhe nas animações: a estante, ou a lista de desejos.
+const viewBody = () => (shelfInfo(currentShelf)?.wishlist ? wishlistEl : cabinet);
 
 function renderRoom() {
-  room.render(roomShelves());
+  room.render(roomShelves(), wishlistBooks());
+}
+
+// A lista de desejos aberta: cartões no lugar das lombadas.
+function renderWishlistView(info) {
+  const books = wishlistBooks();
+  $("vista-nome").textContent = info.name;
+  $("vista-contagem").textContent = plural(books.length);
+  const empty = $("vista-vazia");
+  empty.hidden = books.length > 0;
+  empty.textContent = "Sua lista de desejos está vazia. Quando ver um livro que quer ler ou comprar, guarde aqui. ✨";
+  wishlist.render(books);
 }
 
 function renderView() {
   const info = shelfInfo(currentShelf);
   if (!info) return;
+  // Mostra só o que serve para esta tela: estante (filtros + móvel) ou lista de desejos.
+  $("vista-filtros").hidden = Boolean(info.wishlist);
+  cabinet.hidden = Boolean(info.wishlist);
+  wishlistEl.hidden = !info.wishlist;
+  $("btn-novo-desejo").hidden = !info.wishlist;
+  $("vista-acoes").hidden = !info.custom;
+  if (info.wishlist) return renderWishlistView(info);
   const all = shelfBooks(currentShelf);
   const filter = activeFilter();
   const books = filter.size ? all.filter((b) => filter.has(b.rating || 0)) : all;
@@ -209,13 +241,13 @@ async function openShelfView(id) {
     [{ opacity: 0, transform: "translateY(-8px)" }, { opacity: 1, transform: "none" }],
     { duration: 400, delay: 200, easing: "ease-out", fill: "backwards" }
   );
-  await growFrom(cabinet, afterScroll(from, scrolled));
+  await growFrom(viewBody(), afterScroll(from, scrolled));
 }
 
 // Volta para a sala: a estante grande encolhe de volta até a miniatura.
 async function showRoom() {
   const previous = currentShelf;
-  const from = !viewEl.hidden ? cabinet.getBoundingClientRect() : null;
+  const from = !viewEl.hidden ? viewBody().getBoundingClientRect() : null;
   const scrollBefore = window.scrollY;
 
   currentShelf = null;
@@ -223,6 +255,7 @@ async function showRoom() {
   roomArea.hidden = false;
   readingShelf.render([]);
   shelf.render([]);
+  wishlist.render([]);
   refresh();
 
   const card = previous && room.cards.get(previous);
@@ -377,6 +410,38 @@ const dragger = enableDragAndDrop({
   onDrop: saveMove,
 });
 
+// ---------- Lista de desejos ----------
+
+// "Comprei!": pergunta o formato, a capa voa até o botão "← Sala" e o livro
+// passa para as estantes (como "Quero ler"); os outros cartões fecham o espaço.
+async function buyWish(id, cover) {
+  const book = db.getBook(id);
+  const format = await chooseDialog({
+    title: "Que bom! 📚",
+    message: `Em que formato você comprou “${book.title}”?`,
+    options: [{ text: "Livro físico", value: "fisico" }, { text: "Kindle", value: "kindle" }],
+  });
+  if (!format) return;
+  if (!reducedMotion()) await flyIntoCard(cover.getBoundingClientRect(), book, $("btn-sala"));
+  await flipReorder(wishlist.elements, () =>
+    db.updateBook(id, { location: "estante", status: "quero ler", format })
+  );
+}
+
+async function removeWish(id) {
+  const book = db.getBook(id);
+  const ok = await confirmDialog({
+    title: "Remover da lista de desejos?",
+    message: `“${book.title}” sai da sua lista de desejos (e tudo o que você anotou sobre ele). Isso não pode ser desfeito.`,
+    confirmText: "Sim, remover",
+    danger: true,
+  });
+  if (!ok) return;
+  await flipReorder(wishlist.elements, () => db.deleteBook(id));
+}
+
+$("btn-novo-desejo").addEventListener("click", () => openAddBook("", { destination: "desejos" }));
+
 $("btn-sala").addEventListener("click", backToRoom);
 $("btn-adicionar").addEventListener("click", () => openAddBook());
 
@@ -429,6 +494,24 @@ document.addEventListener("livro:adicionado", async ({ detail }) => {
   if (shelfInfo(currentShelf)?.custom) {
     const chosen = db.getShelves().filter((s) => s.bookIds.includes(book.id)).map((s) => s.id);
     await db.setBookShelves(book.id, [...new Set([...chosen, currentShelf])]);
+  }
+
+  // Desejo novo: voa até o cartão dele na lista, ou até o cartão da lista na sala.
+  if (book.location === "desejos") {
+    if (reducedMotion()) return;
+    if (shelfInfo(currentShelf)?.wishlist) {
+      const card = wishlist.elements.get(book.id);
+      if (card) {
+        await scrollToCenter(card);
+        await flyIntoCard(detail.coverRect, book, card);
+      }
+    } else if (!currentShelf) {
+      await scrollToCenter(roomEl);
+      await flyIntoCard(detail.coverRect, book, () => room.cards.get("desejos"));
+    } else {
+      await flyIntoCard(detail.coverRect, book, $("btn-sala"));
+    }
+    return;
   }
 
   if (currentShelf) {

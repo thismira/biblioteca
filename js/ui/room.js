@@ -64,6 +64,26 @@ export function createRoom(container, { onOpen, onCreate }) {
     return el;
   }
 
+  // Cartão da lista de desejos: um cartãozinho com fita e mini capas.
+  function wishlistCard(books) {
+    const el = document.createElement("button");
+    el.type = "button";
+    el.className = "mini-estante mini-desejos";
+    el.dataset.id = "desejos";
+    el.innerHTML = `
+      <span class="desejos-fita"></span>
+      <span class="desejos-titulo">♡ Lista de desejos</span>
+      <span class="desejos-capas"></span>
+      <span class="mini-contagem"></span>`;
+    const capas = el.querySelector(".desejos-capas");
+    if (books.length) capas.append(...books.slice(0, PREVIEW_COVERS).map(miniCover));
+    else capas.innerHTML = `<span class="mini-vazia">aqui moram os livros que você quer</span>`;
+    el.querySelector(".mini-contagem").textContent = plural(books.length);
+    el.setAttribute("aria-label", `Abrir a lista de desejos, ${plural(books.length)}`);
+    el.addEventListener("click", () => onOpen("desejos", el));
+    return el;
+  }
+
   function newShelfCard() {
     const el = document.createElement("button");
     el.type = "button";
@@ -74,14 +94,16 @@ export function createRoom(container, { onOpen, onCreate }) {
   }
 
   return {
-    render(shelves) {
+    render(shelves, wishes = []) {
       cards.clear();
       const els = shelves.map((s) => {
         const el = card(s);
         cards.set(s.id, el);
         return el;
       });
-      container.replaceChildren(...els, newShelfCard());
+      const wishEl = wishlistCard(wishes);
+      cards.set("desejos", wishEl);
+      container.replaceChildren(...els, wishEl, newShelfCard());
     },
     cards,
   };

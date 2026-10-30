@@ -27,8 +27,20 @@ export const AUTO_SHELVES = [
 // Livros que estão na estante (não na lista de desejos).
 const onShelf = () => db.getBooks().filter((b) => b.location === "estante");
 
+// A lista de desejos aparece na sala como um cartão próprio e abre como uma
+// "estante" especial (id "desejos"), com cartões em vez de lombadas.
+export const WISHLIST = { id: "desejos", name: "Lista de desejos", icon: "♡", wishlist: true, custom: false };
+
+// Livros da lista de desejos, os mais recentes primeiro.
+export function wishlistBooks() {
+  return db.getBooks()
+    .filter((b) => b.location === "desejos")
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
 // Informações de uma estante: { id, name, icon, covers, custom } ou null.
 export function shelfInfo(id) {
+  if (id === WISHLIST.id) return { ...WISHLIST };
   const auto = AUTO_SHELVES.find((s) => s.id === id);
   if (auto) return { ...auto, custom: false };
   const shelf = db.getShelf(id);
@@ -51,8 +63,8 @@ export function shelfBooks(id) {
   return sortBooks(list, db.getShelfSort(id), shelf.bookIds); // arrumação = ordem da estante
 }
 
-// Pode escolher a ordem? (A "Lendo agora" tem ordem automática.)
-export const canSort = (id) => !AUTO_SHELVES.find((s) => s.id === id)?.order;
+// Pode escolher a ordem? (A "Lendo agora" e a lista de desejos têm ordem automática.)
+export const canSort = (id) => id !== WISHLIST.id && !AUTO_SHELVES.find((s) => s.id === id)?.order;
 
 // Estantes que aparecem na sala, na ordem: automáticas (as vazias somem,
 // menos "Todos os livros") e depois as criadas por ela (sempre aparecem).

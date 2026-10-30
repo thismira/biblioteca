@@ -20,6 +20,7 @@ let searchTimer, searchController, editionController;
 // O livro que está sendo cadastrado (preenchido pela busca ou à mão).
 let draft = null;
 let rating = 0; // nota escolhida no cadastro (quando o status é "Lido")
+let destination = "estante"; // "estante" ou "desejos" (lista de desejos)
 // Edições já carregadas: { por: [...], eng: [...] } e a aba atual.
 let editions = {};
 let currentLang = "por";
@@ -66,6 +67,10 @@ function build() {
           <h2>Revisar livro</h2>
           <span class="lugar-estrela"></span>
         </div>
+        <div class="alternar destino" role="radiogroup" aria-label="Guardar em">
+          <button type="button" role="radio" data-destino="estante">📚 Estante</button>
+          <button type="button" role="radio" data-destino="desejos">♡ Lista de desejos</button>
+        </div>
         <div class="revisar-grade">
           <div class="capa-previa">
             <img alt="Capa do livro">
@@ -85,7 +90,7 @@ function build() {
               <label for="cad-paginas">Número de páginas</label>
               <input id="cad-paginas" name="pages" type="number" min="1" inputmode="numeric">
             </div>
-            <div class="linha-campos">
+            <div class="linha-campos campos-status">
               <div class="campo">
                 <label for="cad-status">Status</label>
                 <select id="cad-status" name="status">
@@ -125,7 +130,7 @@ function build() {
           <span class="rotulo">Categorias</span>
           <div class="seletor-categorias"></div>
         </div>
-        <div class="campo">
+        <div class="campo campo-estantes">
           <span class="rotulo">Estantes</span>
           <div class="seletor-estantes"></div>
         </div>
@@ -180,6 +185,12 @@ function build() {
   form.status.addEventListener("change", updateStatusFields);
   form.pages.addEventListener("input", updateStatusFields);
   setupRating();
+  form.querySelector(".destino").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-destino]");
+    if (!button) return;
+    destination = button.dataset.destino;
+    updateStatusFields();
+  });
   form.addEventListener("submit", save);
 
   dialog.addEventListener("close", () => {
@@ -411,8 +422,16 @@ function totalPages() {
 // "Lendo" pergunta a página atual; "Lido" pede a nota e a data de término.
 function updateStatusFields() {
   const status = form.status.value;
-  form.querySelector(".campo-pagina-atual").hidden = status !== "lendo";
-  form.querySelector(".campos-lido").hidden = status !== "lido";
+  const wish = destination === "desejos";
+  // Na lista de desejos não há status, página, nota nem estantes.
+  form.querySelectorAll("[data-destino]").forEach((b) =>
+    b.setAttribute("aria-checked", String(b.dataset.destino === destination))
+  );
+  form.querySelector(".campos-status").hidden = wish;
+  form.querySelector(".campo-estantes").hidden = wish;
+  form.querySelector('button[type="submit"]').textContent = wish ? "Guardar na lista de desejos" : "Guardar na estante";
+  form.querySelector(".campo-pagina-atual").hidden = wish || status !== "lendo";
+  form.querySelector(".campos-lido").hidden = wish || status !== "lido";
   if (status === "lido" && !form.endDate.value) form.endDate.value = today();
   const total = totalPages();
   form.currentPage.max = total || "";
@@ -452,7 +471,8 @@ function setCover(url) {
 
 async function save(event) {
   event.preventDefault();
-  const status = form.status.value;
+  const wish = destination === "desejos";
+  const status = wish ? "quero ler" : form.status.value;
   const pages = totalPages();
   const categories = picker.getSelected();
   const favorite = star.isActive();
@@ -467,6 +487,7 @@ async function save(event) {
   if (status === "lido" && pages) progressLog = [{ date: now, page: pages }];
 
   const book = await db.addBook({
+    location: destination,
     title: form.elements.title.value.trim(),
     author: form.author.value.trim(),
     pages,
@@ -487,7 +508,7 @@ async function save(event) {
 
   // Estantes escolhidas: as que ainda não existem são criadas agora.
   const shelfIds = [];
-  for (const name of shelfPicker.getSelected()) {
+  for (const name of wish ? [] : shelfPicker.getSelected()) {
     const existing = db.getShelves().find((s) => s.name.toLowerCase() === name.toLowerCase());
     shelfIds.push(existing ? existing.id : (await db.addShelf(name)).id);
   }
@@ -508,8 +529,10 @@ function escapeHtml(text) {
 }
 
 // `query`: texto para já começar buscando (ex.: vindo da busca da sala).
-export function openAddBook(query = "") {
+// `destination`: "estante" ou "desejos" (já marcado na revisão).
+export function openAddBook(query = "", { destination: start = "estante" } = {}) {
   if (!dialog) build();
+  destination = start;
   searchInput.value = query;
   statusEl.textContent = "";
   resultsEl.replaceChildren();

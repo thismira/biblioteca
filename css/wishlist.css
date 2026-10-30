@@ -1,0 +1,173 @@
+/* ==========================================================
+   Lista de desejos: cartão na sala e cartões dos livros desejados
+   ========================================================== */
+
+/* ---------- Cartão na sala (papel creme com fita) ---------- */
+.mini-estante.mini-desejos {
+  position: relative;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 10px;
+  min-height: 176px;
+  padding: 22px 14px 12px;
+  border-radius: 6px;
+  background:
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0)),
+    var(--ruido),
+    #FBF3EA;
+  box-shadow: 0 10px 18px -8px rgba(74, 44, 53, 0.35), inset 0 0 0 1px rgba(196, 154, 72, 0.25);
+}
+/* fita rosa atravessando o cartão, com laço */
+.desejos-fita {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent 0 calc(50% - 7px), #E9A3B5 calc(50% - 7px) calc(50% + 7px), transparent calc(50% + 7px));
+  opacity: 0.55;
+  border-radius: inherit;
+}
+.desejos-fita::after {
+  content: "🎀";
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.6rem;
+  filter: drop-shadow(0 2px 2px rgba(74, 44, 53, 0.25));
+}
+.desejos-titulo {
+  position: relative;
+  padding: 2px 12px;
+  border-radius: 999px;
+  background: #FBF3EA;
+  font-family: var(--fonte-titulo);
+  font-weight: 700;
+  font-style: italic;
+  font-size: 1.1rem;
+  color: var(--acento-escuro);
+}
+.desejos-capas {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 8px;
+  min-height: 70px;
+}
+.desejos-capas .mini-capa:nth-child(1) { rotate: -6deg; }
+.desejos-capas .mini-capa:nth-child(3) { rotate: 6deg; }
+.desejos-capas .mini-vazia {
+  color: var(--texto-suave);
+  font-size: 0.95rem;
+  text-align: center;
+  padding: 0 10px;
+}
+.mini-desejos .mini-contagem { margin-top: 0; }
+
+/* ---------- Lista aberta ---------- */
+.lista-desejos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 430px), 1fr));
+  gap: 18px;
+}
+
+.desejo {
+  display: grid;
+  grid-template-columns: 112px 1fr;
+  gap: 18px;
+  padding: 16px;
+  border-radius: 18px;
+  background: var(--creme);
+  box-shadow: 0 6px 18px rgba(74, 44, 53, 0.08), inset 0 0 0 1px var(--linha);
+}
+@media (max-width: 420px) {
+  .desejo { grid-template-columns: 84px 1fr; gap: 12px; }
+}
+
+.desejo-capa {
+  align-self: start;
+  aspect-ratio: 2 / 3;
+  width: 100%;
+  padding: 0;
+  border: none;
+  border-radius: 3px 6px 6px 3px;
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--rosa-po);
+  box-shadow: inset 4px 0 5px -2px rgba(0, 0, 0, 0.3), 5px 6px 12px rgba(40, 10, 20, 0.3);
+  transition: translate 0.25s, box-shadow 0.25s;
+}
+.desejo-capa:hover { translate: 0 -4px; }
+.desejo-capa img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.desejo-capa .capa-gerada { height: 100%; padding: 10px; }
+.desejo-capa .capa-gerada strong { font-size: 1rem; }
+
+.desejo-info h3 {
+  font-size: 1.45rem;
+  line-height: 1.15;
+}
+.desejo-autor {
+  margin: 2px 0 0;
+  font-weight: 700;
+  color: var(--texto-suave);
+}
+.desejo-edicao {
+  margin: 2px 0 10px;
+  font-size: 0.85rem;
+  color: var(--texto-suave);
+}
+.desejo-edicao:empty { display: none; }
+
+.desejo-amazon {
+  font-size: 0.85rem;
+  padding: 7px 14px;
+}
+
+.desejo-preco {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin: 12px 0;
+}
+.desejo-preco label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 0.85rem;
+}
+.desejo-moeda {
+  display: flex;
+  align-items: center;
+  border: 1.5px solid var(--linha);
+  border-radius: 10px;
+  background: var(--rosa-nevoa);
+  overflow: hidden;
+}
+.desejo-moeda span {
+  padding: 0 4px 0 10px;
+  font-weight: 700;
+  color: var(--texto);
+}
+.desejo-moeda input {
+  width: 80px;
+  border: none;
+  background: transparent;
+  padding: 7px 10px 7px 2px;
+}
+.desejo-preco input[type="date"] {
+  width: auto;
+  padding: 6px 8px;
+}
+
+.desejo-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+.desejo-acoes .botao { font-size: 0.88rem; padding: 8px 14px; }
+.desejo-acoes .link { font-size: 0.85rem; }
+
+/* Escolha "Guardar em" no cadastro */
+.alternar.destino { margin: -6px 0 16px; }
