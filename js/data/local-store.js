@@ -16,7 +16,14 @@ function read(key, fallback) {
 }
 
 function write(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (err) {
+    if (err.name === "QuotaExceededError") {
+      throw new Error("O navegador ficou sem espaço para guardar os dados.");
+    }
+    throw err;
+  }
 }
 
 export async function loadBooks() {

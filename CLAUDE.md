@@ -34,7 +34,8 @@ em JSON.
 ## Estrutura
 - `index.html` — página única.
 - `css/` — `base.css` (cores, fontes, componentes), `shelf.css`,
-  `add-book.css` (cadastro e chips de categoria), `detail.css`, `wishlist.css`.
+  `add-book.css` (cadastro e chips de categoria), `detail.css` (página do
+  livro, confirmações, editor de foto), `wishlist.css`.
 - `js/main.js` — inicialização e rotas.
 - `js/data/` — `db.js` (fachada) e `local-store.js` (implementação).
 - `js/services/` — Open Library, cor da lombada, Spotify, Amazon.
@@ -51,7 +52,19 @@ em JSON.
     foto do livro sobre fundo claro (cantos claros e iguais), acha a borda
     do livro e ignora o fundo. Fila de uma capa por vez. Ao mudar a regra,
     aumente `SPINE_COLOR_VERSION`: `spineColorSource` ("v<n>:<capa>")
-    faz as cores antigas serem refeitas. Cor manual nunca é substituída.
+    faz as cores antigas serem refeitas. A cor escolhida à mão fica em
+    `spineColorCustom` e tem prioridade (`spineColor()` em `shelf.js`).
+  - `book-detail.js`: página do livro (um `<dialog>` em tela cheia).
+    Abre com o livro saindo da prateleira, girando (rotateY) e virando capa;
+    fecha pelo caminho inverso. Rotas: `#/livro/<id>` (tratadas em
+    `main.js`; "voltar" do navegador fecha). Tudo salva na hora. Animações
+    usam `done()` (tempo máximo) e um pedido de fechar durante a abertura é
+    guardado e executado depois — não remover essas proteções.
+  - `spine-photo.js`: escolher foto, recortar com retângulo (pointer
+    events), gira sozinho se a lombada estiver deitada, reduz para 360px de
+    altura em JPEG (~10–20 KB, data URL em `spinePhoto`).
+  - `dialogs.js`: `confirmDialog()` e `alertDialog()` no visual do site.
+    Use sempre `confirmDialog({ danger: true })` antes de apagar dados.
   - `add-book.js`: cadastro em 3 passos (buscar → edição → revisar).
     ISBN e link da capa não aparecem para ela (o ISBN fica guardado para o
     link da Amazon). Páginas só são digitáveis no cadastro manual.
@@ -101,19 +114,23 @@ dentro da pasta) e o `.claude/launch.json` só se conecta a
   edition: { publisher, year, lang },
   startDate, endDate, rating, review,
   quotes: [{ id, text, page }], spotifyUrl,
-  spineColor, spineColorManual,
+  spineColor, spineColorSource,     // cor automática (da capa)
+  spineColorCustom,                 // cor escolhida à mão (prioridade)
+  spinePhoto, spinePhotoAspect,     // foto da lombada (só livros físicos)
   wishPrice, wishPriceDate, createdAt, updatedAt }
 ```
 Configurações (`settings`): `sortBy`, `customOrder` (lista de ids),
 `categories` (criadas pela leitora).
 
-Etapa 4 (página do livro) deve incluir também: escolher a cor da lombada à
-mão (`spineColorManual`) e "📷 Foto da lombada" (foto reduzida, ~10 KB,
-guardada no livro; não aparece para livros `kindle`). Não existe fonte
-automática de fotos de lombada (Open Library e Google Books só têm capas).
+Não existe fonte automática de fotos de lombada (Open Library e Google
+Books só têm capas): por isso ela fotografa os próprios livros. Fotos
+ocupam espaço no localStorage (~5 MB no total); se lotar, `local-store.js`
+lança um erro claro e a página do livro mostra um aviso. No Supabase, as
+fotos devem ir para o Storage.
 
 `progressLog` ganha uma entrada a cada atualização de página; a página do
-livro (etapa 4) usa isso para mostrar % que falta, páginas que faltam e
-páginas lidas desde a última atualização. Favoritos aparecem numa estante
+livro usa isso para mostrar % que falta, páginas que faltam e páginas lidas
+desde a última atualização. Ao abrir o banco, `db.init()` completa livros
+antigos com os campos novos (`withDefaults`). Favoritos aparecem numa estante
 própria (plaquinha dourada) e com estrelinha na lombada também na estante
 principal.

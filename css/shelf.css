@@ -303,6 +303,24 @@
 .lombada[data-favorito] .lombada-estrela { display: block; }
 .lombada[data-favorito] .lombada-texto { padding-left: 38px; } /* abre espaço para a estrela */
 
+/* Lombada com foto: a foto ocupa tudo (com um leve volume por cima);
+   o texto e os enfeites somem, porque a foto já tem o título. */
+.lombada[data-foto] {
+  background-image:
+    linear-gradient(90deg,
+      rgba(30, 10, 15, 0.22) 0,
+      rgba(255, 255, 255, 0.12) 10%,
+      rgba(0, 0, 0, 0) 40%,
+      rgba(30, 10, 15, 0.22) 100%),
+    var(--foto);
+  background-size: 100% 100%;
+}
+.lombada[data-foto]::before,
+.lombada[data-foto]::after,
+.lombada[data-foto] .lombada-texto {
+  display: none;
+}
+
 /* Brilho quando a estrelinha voadora chega */
 .lombada.recebeu-estrela { animation: recebeu-estrela 1s ease-out; }
 @keyframes recebeu-estrela {

@@ -49,9 +49,11 @@ function withDefaults(fields) {
     review: "",
     quotes: [],
     spotifyUrl: "",
-    spineColor: "",
-    spineColorManual: false, // true quando ela escolhe a cor à mão
+    spineColor: "",          // cor extraída automaticamente da capa
     spineColorSource: "",    // "v<versão da regra>:<capa>" de onde a cor saiu
+    spineColorCustom: "",    // cor escolhida à mão (tem prioridade)
+    spinePhoto: "",          // foto da lombada (imagem pequena, data URL)
+    spinePhotoAspect: null,  // largura ÷ altura da foto
     wishPrice: "",
     wishPriceDate: "",
     createdAt: now,
@@ -61,7 +63,8 @@ function withDefaults(fields) {
 }
 
 export async function init() {
-  books = await store.loadBooks();
+  // Completa livros antigos com os campos que surgiram depois.
+  books = (await store.loadBooks()).map((b) => withDefaults(b));
   settings = { ...DEFAULT_SETTINGS, ...(await store.loadSettings()) };
 }
 
@@ -96,8 +99,9 @@ export async function updateBook(id, changes) {
   const current = getBook(id);
   if (!current) return null;
   const book = { ...current, ...changes, updatedAt: new Date().toISOString() };
-  books = books.map((b) => (b.id === id ? book : b));
+  // Salva primeiro: se falhar (ex.: navegador sem espaço), nada muda na tela.
   await store.putBook(book);
+  books = books.map((b) => (b.id === id ? book : b));
   notify();
   return book;
 }

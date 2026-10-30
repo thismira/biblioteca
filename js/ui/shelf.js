@@ -13,15 +13,20 @@ const GAP = 3;            // espaço entre lombadas (px), igual ao CSS
 const DEFAULT_PAGES = 300;
 const STAR_SPACE = 14;    // espaço da estrelinha de favorito no topo da lombada
 
+// Foto da lombada vale só para livros físicos.
+const hasPhoto = (book) => Boolean(book.spinePhoto) && book.format !== "kindle";
+
 // Altura e espessura da lombada a partir do número de páginas.
+// Com foto, a espessura segue a proporção da foto (para não esticar).
 export function spineSize(book) {
   const pages = book.pages || DEFAULT_PAGES;
   const t = Math.min(Math.max((pages - 100) / 700, 0), 1);
   const jitter = (hashString(book.id) % 13) - 6; // variação fixa de -6 a +6 px
-  return {
-    height: Math.round(160 + 80 * t + jitter),
-    width: Math.round(Math.min(Math.max(12 + Math.sqrt(pages) * 1.6, 22), 60)),
-  };
+  const height = Math.round(160 + 80 * t + jitter);
+  const width = hasPhoto(book) && book.spinePhotoAspect
+    ? Math.round(Math.min(Math.max(height * book.spinePhotoAspect, 16), 80))
+    : Math.round(Math.min(Math.max(12 + Math.sqrt(pages) * 1.6, 22), 60));
+  return { height, width };
 }
 
 // "Régua" do navegador: mede a largura real de um texto numa fonte.
@@ -82,8 +87,9 @@ function fitText(book, width, height, framed) {
   return { fontSize: oneLine, lines: 1, author, authorLen, titleSpace };
 }
 
+// Cor da lombada: a escolhida à mão > a extraída da capa > pastel provisória.
 export function spineColor(book) {
-  return book.spineColor || fallbackColor(book.title + book.author);
+  return book.spineColorCustom || book.spineColor || fallbackColor(book.title + book.author);
 }
 
 function createSpine(book, onOpen) {
@@ -93,7 +99,7 @@ function createSpine(book, onOpen) {
   el.dataset.id = book.id;
   el.dataset.estilo = hashString(book.id + ":estilo") % 4; // acabamento fixo por livro
   el.innerHTML = `<span class="lombada-estrela" aria-hidden="true">★</span><span class="lombada-texto"><span class="lombada-espaco"></span><span class="lombada-titulo"></span><span class="lombada-autor"></span></span>`;
-  el.addEventListener("click", () => onOpen(el.dataset.id));
+  el.addEventListener("click", () => onOpen(el.dataset.id, el));
   return el;
 }
 
@@ -115,6 +121,10 @@ function updateSpine(el, book) {
   el.querySelector(".lombada-titulo").textContent = book.title;
   el.querySelector(".lombada-autor").textContent = author;
   el.toggleAttribute("data-favorito", Boolean(book.favorite));
+  // Foto da lombada: substitui a cor e o texto (a foto já tem o título).
+  el.toggleAttribute("data-foto", hasPhoto(book));
+  if (hasPhoto(book)) el.style.setProperty("--foto", `url("${book.spinePhoto}")`);
+  else el.style.removeProperty("--foto");
   el.setAttribute(
     "aria-label",
     `${book.title}${book.author ? ", de " + book.author : ""}${book.favorite ? ", favorito" : ""}`
