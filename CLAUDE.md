@@ -77,11 +77,10 @@ em JSON.
   horizontal e girado 90°; título centralizado, autor em maiúsculas no pé.
   O tamanho da letra é calculado medindo o texto (`measureText`) em
   `js/ui/shelf.js`.
-- Hover na lombada: o livro inclina pelo topo em 3D, como se fosse puxado
-  (`rotate: x -22deg` com origem na base, `.prateleira` com `perspective`).
-  O `shelf.js` centraliza o `perspective-origin` no livro sob o mouse para
-  ele não "tombar" de lado. Usa as propriedades `rotate`/`translate`,
-  deixando `transform` livre para as animações FLIP e de arrastar.
+- Hover na lombada: o livro sobe 14px, cresce 4,5% e a sombra aumenta
+  ("puxar"). Usa as propriedades CSS `translate`/`scale`, deixando
+  `transform` livre para as animações FLIP e de arrastar. (A versão com
+  inclinação 3D pelo topo foi testada e descartada pela dona do projeto.)
 - Fontes: Cormorant Garamond (títulos, lombadas, quotes) + Nunito Sans
   (interface).
 - Cores definidas como variáveis em `:root` (`css/base.css` e `css/shelf.css`).
