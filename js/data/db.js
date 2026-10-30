@@ -49,7 +49,8 @@ function withDefaults(fields) {
     quotes: [],
     spotifyUrl: "",
     spineColor: "",
-    spineColorManual: false,
+    spineColorManual: false, // true quando ela escolhe a cor à mão
+    spineColorSource: "",    // "v<versão da regra>:<capa>" de onde a cor saiu
     wishPrice: "",
     wishPriceDate: "",
     createdAt: now,

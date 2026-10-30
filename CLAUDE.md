@@ -44,6 +44,12 @@ em JSON.
     escolhida. `suggestCategories()` traduz assuntos para categorias em PT.
 - `js/ui/` — estante, ordenação, FLIP, arrastar, página do livro, cadastro,
   lista de desejos, backup, diálogos.
+  - `spine-color.js`: cor da lombada = cor dominante (baldes de cor, não
+    média) da faixa esquerda da capa (2%–8% da largura). Se a "capa" for
+    foto do livro sobre fundo claro (cantos claros e iguais), acha a borda
+    do livro e ignora o fundo. Fila de uma capa por vez. Ao mudar a regra,
+    aumente `SPINE_COLOR_VERSION`: `spineColorSource` ("v<n>:<capa>")
+    faz as cores antigas serem refeitas. Cor manual nunca é substituída.
   - `add-book.js`: cadastro em 3 passos (buscar → edição → revisar).
     ISBN e link da capa não aparecem para ela (o ISBN fica guardado para o
     link da Amazon). Páginas só são digitáveis no cadastro manual.
@@ -69,6 +75,9 @@ em JSON.
   horizontal e girado 90°; título centralizado, autor em maiúsculas no pé.
   O tamanho da letra é calculado medindo o texto (`measureText`) em
   `js/ui/shelf.js`.
+- Hover na lombada: o livro sobe e cresce de leve ("puxar"). Usa as
+  propriedades CSS `translate`/`scale`, deixando `transform` livre para as
+  animações FLIP e de arrastar.
 - Fontes: Cormorant Garamond (títulos, lombadas, quotes) + Nunito Sans
   (interface).
 - Cores definidas como variáveis em `:root` (`css/base.css` e `css/shelf.css`).

@@ -5,6 +5,7 @@ import { createShelf } from "./ui/shelf.js";
 import { sortBooks } from "./ui/sort.js";
 import { openAddBook } from "./ui/add-book.js";
 import { flyStar } from "./ui/favorite-star.js";
+import { queueSpineColor, SPINE_COLOR_VERSION } from "./services/spine-color.js";
 
 await db.init();
 
@@ -28,6 +29,20 @@ function refresh() {
   favoritesSection.hidden = favorites.length === 0;
   favoritesShelf.render(favorites);
   shelf.render(onShelf);
+  ensureSpineColors();
+}
+
+// Livros com capa e sem cor extraída (ou cuja capa ou regra de extração
+// mudou) entram na fila. A cor escolhida à mão nunca é substituída.
+function ensureSpineColors() {
+  for (const book of db.getBooks()) {
+    if (!book.coverUrl || book.spineColorManual) continue;
+    const source = `v${SPINE_COLOR_VERSION}:${book.coverUrl}`;
+    if (book.spineColorSource === source) continue;
+    queueSpineColor(book.coverUrl, (color) =>
+      db.updateBook(book.id, { spineColor: color, spineColorSource: source })
+    );
+  }
 }
 
 db.subscribe(refresh);
