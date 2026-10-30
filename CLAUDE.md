@@ -56,6 +56,12 @@ em JSON.
     aumente `SPINE_COLOR_VERSION`: `spineColorSource` ("v<n>:<capa>")
     faz as cores antigas serem refeitas. A cor escolhida à mão fica em
     `spineColorCustom` e tem prioridade (`spineColor()` em `shelf.js`).
+  - `reading-shelf.js`: estante "Lendo agora" (topo da página). Livros com
+    status "lendo" saem da estante principal e aparecem aqui com a CAPA de
+    frente, barrinha de progresso e "32% · pág. 152"; o mais recente
+    primeiro. Em telas estreitas as capas encolhem para caberem 2.
+    `findPlace(id)` em `main.js` acha o livro na "Lendo agora" ou na
+    estante (usado pelas animações de abrir/fechar e de chegada).
   - `book-detail.js`: página do livro (um `<dialog>` em tela cheia).
     Abre com o livro saindo da prateleira, girando (rotateY) e virando capa;
     fecha pelo caminho inverso. Rotas: `#/livro/<id>` (tratadas em
@@ -172,6 +178,6 @@ fotos devem ir para o Storage.
 `progressLog` ganha uma entrada a cada atualização de página; a página do
 livro usa isso para mostrar % que falta, páginas que faltam e páginas lidas
 desde a última atualização. Ao abrir o banco, `db.init()` completa livros
-antigos com os campos novos (`withDefaults`). Favoritos aparecem numa estante
-própria (plaquinha dourada) e com estrelinha na lombada também na estante
-principal.
+antigos com os campos novos (`withDefaults`). Ordem das estantes: "Lendo agora" → Favoritos → Estante. Favoritos
+aparecem numa estante própria (plaquinha dourada) e com estrelinha na
+lombada também na estante principal.

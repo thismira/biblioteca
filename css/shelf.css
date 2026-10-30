@@ -80,8 +80,8 @@
 .movel-base::before { left: 26px; }
 .movel-base::after { right: 26px; }
 
-/* ---------- Estante de favoritos ---------- */
-.movel-favoritos {
+/* ---------- Estantes de destaque ("Lendo agora" e favoritos) ---------- */
+.movel-destaque {
   margin-bottom: 48px;
 }
 
@@ -141,6 +141,100 @@
       #C793A0 20px);
   box-shadow: 0 9px 10px -6px rgba(50, 15, 25, 0.5);
   z-index: 1;
+}
+
+/* ---------- "Lendo agora": capas de frente ---------- */
+.estante-lendo .prateleira {
+  gap: 22px;              /* GAP do reading-shelf.js */
+  padding: 0 26px;
+}
+@media (max-width: 520px) {
+  .estante-lendo .prateleira { padding: 0 12px; }
+}
+
+.livro-lendo {
+  position: relative;
+  flex: none;
+  width: var(--largura-capa, 128px); /* calculada no reading-shelf.js */
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  padding: 0 0 8px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  color: var(--creme);
+  transition:
+    translate 0.35s cubic-bezier(.3, .7, .4, 1),
+    scale 0.35s cubic-bezier(.3, .7, .4, 1);
+}
+
+.livro-lendo-capa {
+  display: block;
+  aspect-ratio: 2 / 3;
+  border-radius: 3px 6px 6px 3px;
+  overflow: hidden;
+  background: var(--rosa-po);
+  /* dobra da lombada à esquerda + sombra projetada no fundo da estante */
+  box-shadow:
+    inset 4px 0 5px -2px rgba(0, 0, 0, 0.3),
+    6px 6px 12px rgba(40, 10, 20, 0.45);
+  transition: box-shadow 0.35s ease;
+}
+.livro-lendo-capa img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.livro-lendo-capa .capa-gerada {
+  height: 100%;
+  padding: 12px;
+}
+.livro-lendo-capa .capa-gerada strong { font-size: 1.05rem; }
+
+.livro-lendo-barra {
+  display: block;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 250, 248, 0.45);
+  overflow: hidden;
+}
+.livro-lendo-barra span {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #FFD1DC, #FFF4DC);
+  transition: width 0.8s cubic-bezier(.3, .8, .3, 1);
+}
+
+.livro-lendo-info {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 2px rgba(40, 10, 20, 0.45);
+}
+
+@media (hover: hover) {
+  .livro-lendo:hover {
+    z-index: 3;
+    translate: 0 -10px;
+    scale: 1.04;
+  }
+  .livro-lendo:hover .livro-lendo-capa {
+    box-shadow:
+      inset 4px 0 5px -2px rgba(0, 0, 0, 0.3),
+      10px 14px 20px rgba(40, 10, 20, 0.5);
+  }
+}
+.livro-lendo:focus-visible {
+  outline: 3px solid var(--acento);
+  outline-offset: 4px;
+  border-radius: 6px;
 }
 
 /* ---------- Lombada ---------- */

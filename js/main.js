@@ -2,6 +2,7 @@
 
 import * as db from "./data/db.js";
 import { createShelf } from "./ui/shelf.js";
+import { createReadingShelf } from "./ui/reading-shelf.js";
 import { sortBooks } from "./ui/sort.js";
 import { openAddBook } from "./ui/add-book.js";
 import { flyStar } from "./ui/favorite-star.js";
@@ -38,8 +39,8 @@ async function route() {
   clickedSpine = null;
   if (match) {
     const ok = await openBookDetail(match[1], {
-      spine: spine || shelf.elements.get(match[1]),
-      find: (id) => shelf.elements.get(id),
+      spine: spine || findPlace(match[1]),
+      find: findPlace,
       requestClose,
     });
     // Livro que não existe mais (ex.: link antigo): volta para a estante.
@@ -51,6 +52,8 @@ async function route() {
 }
 
 const emptyMessage = document.getElementById("estante-vazia");
+const readingSection = document.getElementById("secao-lendo");
+const readingShelf = createReadingShelf(document.getElementById("estante-lendo"), { onOpen: openBook });
 const favoritesSection = document.getElementById("secao-favoritos");
 const favoritesShelf = createShelf(document.getElementById("estante-favoritos"), {
   onOpen: openBook,
@@ -58,16 +61,31 @@ const favoritesShelf = createShelf(document.getElementById("estante-favoritos"),
 });
 const shelf = createShelf(document.getElementById("estante"), { onOpen: openBook });
 
+// Onde o livro está na tela: na "Lendo agora" (capa) ou na estante (lombada).
+const findPlace = (id) => readingShelf.elements.get(id) || shelf.elements.get(id);
+
+// Última vez que ela mexeu na leitura (para a "Lendo agora" mostrar
+// primeiro o livro mais recente).
+const lastActivity = (b) => b.progressLog?.at(-1)?.date || b.startDate || b.createdAt;
+
 function refresh() {
   const settings = db.getSettings();
   const onShelf = sortBooks(db.getBooks().filter((b) => b.location === "estante"), settings);
+  // Livros em leitura saem da estante e vão para a "Lendo agora"
+  // (como levar o livro para a mesinha de cabeceira).
+  const reading = onShelf
+    .filter((b) => b.status === "lendo")
+    .sort((a, b) => lastActivity(b).localeCompare(lastActivity(a)));
+  const others = onShelf.filter((b) => b.status !== "lendo");
   const favorites = onShelf.filter((b) => b.favorite);
 
   emptyMessage.hidden = onShelf.length > 0;
-  // Mostra a prateleira de favoritos antes de desenhar (para medir a largura).
+  // Mostra cada estante de destaque antes de desenhar (para medir a largura).
+  readingSection.hidden = reading.length === 0;
+  readingShelf.render(reading);
   favoritesSection.hidden = favorites.length === 0;
   favoritesShelf.render(favorites);
-  shelf.render(onShelf);
+  shelf.render(others);
   ensureSpineColors();
 }
 
@@ -103,11 +121,12 @@ function scrollToCenter(el) {
   });
 }
 
-// Livro novo: a capa voa da janela de cadastro até o lugar dele na estante e
-// vira lombada. Se for favorito, depois a estrelinha voa até os favoritos.
+// Livro novo: a capa voa da janela de cadastro até o lugar dele (lombada na
+// estante, ou capa na "Lendo agora"). Se for favorito, depois a estrelinha
+// voa até os favoritos.
 document.addEventListener("livro:adicionado", async ({ detail }) => {
   const book = db.getBook(detail.id);
-  const spine = shelf.elements.get(detail.id);
+  const spine = findPlace(detail.id);
   if (!book || !spine) return;
   spine.style.visibility = "hidden"; // escondida até o livro "chegar"
   await scrollToCenter(spine);
