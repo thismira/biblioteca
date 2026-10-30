@@ -1,12 +1,17 @@
 // Conversa com a Open Library (catálogo gratuito, sem cadastro nem chave).
 
 const BASE = "https://openlibrary.org";
-// Pedimos só os campos necessários. A lista completa de ISBNs pode ter
-// milhares de itens, então pegamos só a edição principal de cada obra.
+// Na busca pedimos só os campos necessários. A lista completa de ISBNs pode
+// ter milhares de itens; em vez dela pegamos a edição que bateu com a busca
+// (se ela digitou em português, vem a edição em português).
 const FIELDS = [
   "key", "title", "author_name", "cover_i", "number_of_pages_median",
-  "first_publish_year", "subject", "editions", "editions.isbn",
+  "first_publish_year", "subject",
+  "editions", "editions.title", "editions.language", "editions.cover_i",
 ].join(",");
+
+// Idiomas oferecidos na escolha de edição (código da Open Library -> nome).
+export const LANGUAGES = { por: "Português", eng: "Inglês" };
 
 export function coverUrl(coverId, size = "L") {
   return coverId ? `https://covers.openlibrary.org/b/id/${coverId}-${size}.jpg` : "";
@@ -23,19 +28,24 @@ function pickIsbn(list = []) {
 }
 
 function toResult(doc) {
+  const edition = doc.editions?.docs?.[0] || {};
+  const editionLang = (edition.language || []).find((l) => LANGUAGES[l]) || null;
   return {
     workKey: doc.key, // ex.: "/works/OL66554W"
     title: doc.title || "",
-    author: (doc.author_name || []).slice(0, 2).join(", "),
+    // Título da edição que bateu com a busca (ex.: "A menina que roubava livros")
+    displayTitle: edition.title || doc.title || "",
+    // Só o primeiro nome: a Open Library costuma listar tradutores em seguida.
+    author: (doc.author_name || [])[0] || "",
     year: doc.first_publish_year || null,
     pages: doc.number_of_pages_median || null,
-    coverId: doc.cover_i || null,
-    isbn: pickIsbn(doc.editions?.docs?.[0]?.isbn),
+    coverId: edition.cover_i || doc.cover_i || null,
+    lang: editionLang,
     subjects: doc.subject || [],
   };
 }
 
-// Busca livros pelo texto digitado (título, autor ou os dois).
+// Busca livros pelo texto digitado (título ou autor, em português ou inglês).
 // `signal` permite cancelar a busca se ela digitar outra coisa.
 export async function searchBooks(query, { signal } = {}) {
   const url = `${BASE}/search.json?q=${encodeURIComponent(query)}&fields=${FIELDS}&limit=12`;
@@ -45,20 +55,39 @@ export async function searchBooks(query, { signal } = {}) {
   return data.docs.map(toResult);
 }
 
-// Quando a edição principal não tem ISBN, procura nas outras edições.
-export async function findIsbn(workKey) {
-  try {
-    const res = await fetch(`${BASE}${workKey}/editions.json?limit=50`);
-    if (!res.ok) return "";
-    const data = await res.json();
-    for (const ed of data.entries || []) {
-      const isbn = pickIsbn([...(ed.isbn_13 || []), ...(ed.isbn_10 || [])]);
-      if (isbn) return isbn;
-    }
-  } catch {
-    // sem internet ou erro: seguimos sem ISBN, ela pode digitar à mão
-  }
-  return "";
+// Edições de uma obra num idioma. Usa a "Query API", que já filtra o idioma
+// no servidor (a lista comum de edições vem misturada e sem ordem).
+export async function getEditions(workKey, lang, { signal } = {}) {
+  const params = new URLSearchParams({
+    type: "/type/edition",
+    works: workKey,
+    languages: `/languages/${lang}`,
+    limit: "100",
+  });
+  // Campos que queremos de volta (a Query API pede assim: nome=vazio).
+  ["key", "title", "number_of_pages", "covers", "isbn_13", "isbn_10", "publishers", "publish_date"]
+    .forEach((f) => params.append(f, ""));
+  const res = await fetch(`${BASE}/query.json?${params}`, { signal });
+  if (!res.ok) throw new Error(`Open Library respondeu ${res.status}`);
+  const list = await res.json();
+
+  const editions = list.map((e) => ({
+    key: e.key,
+    title: e.title || "",
+    pages: e.number_of_pages || null,
+    coverId: (e.covers || []).find((c) => c > 0) || null,
+    isbn: pickIsbn([...(e.isbn_13 || []), ...(e.isbn_10 || [])]),
+    publisher: (e.publishers || [])[0] || "",
+    year: Number((String(e.publish_date || "").match(/\d{4}/) || [])[0]) || null,
+    lang,
+  }));
+
+  // Esconde edições "fantasmas" (sem capa e sem páginas), se houver outras.
+  const useful = editions.filter((e) => e.coverId || e.pages);
+  const shown = useful.length ? useful : editions;
+  // Primeiro as mais completas (capa, páginas, ISBN), depois as mais novas.
+  const score = (e) => (e.coverId ? 2 : 0) + (e.pages ? 2 : 0) + (e.isbn ? 1 : 0);
+  return shown.sort((a, b) => score(b) - score(a) || (b.year || 0) - (a.year || 0));
 }
 
 // ---------- Categorias sugeridas ----------

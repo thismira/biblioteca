@@ -10,8 +10,8 @@
 import { readableTextColor, fallbackColor, hashString } from "../utils/color.js";
 
 const GAP = 3;            // espaço entre lombadas (px), igual ao CSS
-const MIN_SHELVES = 3;    // a estante sempre mostra pelo menos 3 prateleiras
 const DEFAULT_PAGES = 300;
+const STAR_SPACE = 14;    // espaço da estrelinha de favorito no topo da lombada
 
 // Altura e espessura da lombada a partir do número de páginas.
 export function spineSize(book) {
@@ -54,7 +54,8 @@ function longestOfTwoLines(title, size) {
 // Decide o tamanho da letra, o número de linhas do título e se o autor
 // aparece completo ou só o sobrenome, medindo o texto de verdade.
 function fitText(book, width, height, framed) {
-  const usable = height - 50; // descontando margens e enfeites
+  // descontando margens, enfeites e a estrelinha (se for favorito)
+  const usable = height - 50 - (book.favorite ? STAR_SPACE : 0);
   const authorMax = usable * 0.36;
   let author = book.author || "";
   if (authorWidth(author) > authorMax) author = author.split(/\s+/).pop();
@@ -91,7 +92,7 @@ function createSpine(book, onOpen) {
   el.className = "lombada";
   el.dataset.id = book.id;
   el.dataset.estilo = hashString(book.id + ":estilo") % 4; // acabamento fixo por livro
-  el.innerHTML = `<span class="lombada-texto"><span class="lombada-espaco"></span><span class="lombada-titulo"></span><span class="lombada-autor"></span></span>`;
+  el.innerHTML = `<span class="lombada-estrela" aria-hidden="true">★</span><span class="lombada-texto"><span class="lombada-espaco"></span><span class="lombada-titulo"></span><span class="lombada-autor"></span></span>`;
   el.addEventListener("click", () => onOpen(el.dataset.id));
   return el;
 }
@@ -113,10 +114,15 @@ function updateSpine(el, book) {
   el.style.setProperty("--titulo-max", titleSpace + (framed ? 14 : 0) + "px");
   el.querySelector(".lombada-titulo").textContent = book.title;
   el.querySelector(".lombada-autor").textContent = author;
-  el.setAttribute("aria-label", `${book.title}${book.author ? ", de " + book.author : ""}`);
+  el.toggleAttribute("data-favorito", Boolean(book.favorite));
+  el.setAttribute(
+    "aria-label",
+    `${book.title}${book.author ? ", de " + book.author : ""}${book.favorite ? ", favorito" : ""}`
+  );
 }
 
-export function createShelf(container, { onOpen }) {
+// `minShelves`: quantas prateleiras aparecem mesmo vazias.
+export function createShelf(container, { onOpen, minShelves = 3 }) {
   const elements = new Map(); // id do livro -> elemento da lombada
   let books = [];
   let lastWidth = 0;
@@ -171,7 +177,7 @@ export function createShelf(container, { onOpen }) {
 
     // Garante a quantidade de prateleiras.
     const rowEls = [...container.querySelectorAll(".prateleira")];
-    const needed = Math.max(rows.length, MIN_SHELVES);
+    const needed = Math.max(rows.length, minShelves);
     while (rowEls.length < needed) rowEls.push(makeRow());
     rowEls.slice(needed).forEach((r) => r.remove());
 

@@ -80,6 +80,33 @@
 .movel-base::before { left: 26px; }
 .movel-base::after { right: 26px; }
 
+/* ---------- Estante de favoritos ---------- */
+.movel-favoritos {
+  margin-bottom: 48px;
+}
+
+/* Plaquinha dourada presa na cornija */
+.placa {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 2px 20px 3px;
+  border-radius: 4px;
+  font-family: var(--fonte-titulo);
+  font-weight: 700;
+  font-style: italic;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  color: #4A2C35;
+  background: linear-gradient(to bottom, #F3DDA6 0, #D9B566 45%, #C49A48 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -1px 0 rgba(90, 60, 20, 0.35),
+    0 2px 4px rgba(74, 44, 53, 0.35);
+}
+
 /* ---------- Prateleiras (nichos) ---------- */
 .prateleira {
   position: relative;
@@ -258,6 +285,30 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   opacity: 0.85;
+}
+
+/* Estrelinha dourada de favorito, no topo da lombada */
+.lombada-estrela {
+  display: none;
+  position: absolute;
+  top: 25px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1;
+  color: #E2B654;
+  text-shadow: 0 0 1px rgba(60, 30, 10, 0.8), 0 1px 1px rgba(60, 30, 10, 0.4);
+}
+.lombada[data-favorito] .lombada-estrela { display: block; }
+.lombada[data-favorito] .lombada-texto { padding-left: 38px; } /* abre espaço para a estrela */
+
+/* Brilho quando a estrelinha voadora chega */
+.lombada.recebeu-estrela { animation: recebeu-estrela 1s ease-out; }
+@keyframes recebeu-estrela {
+  0% { box-shadow: 0 0 0 0 rgba(255, 215, 120, 0.9), 2px 0 4px rgba(40, 10, 20, 0.35); transform: translateY(0); }
+  30% { box-shadow: 0 0 22px 8px rgba(255, 215, 120, 0.85), 2px 0 4px rgba(40, 10, 20, 0.35); transform: translateY(-8px); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 215, 120, 0), 2px 0 4px rgba(40, 10, 20, 0.35); transform: translateY(0); }
 }
 
 .lombada:focus-visible {

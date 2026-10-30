@@ -73,8 +73,84 @@
   line-height: 1.2;
 }
 .resultado small {
+  display: block;
   color: var(--texto-suave);
   font-size: 0.85rem;
+}
+.resultado .original {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--texto-suave);
+}
+
+/* ---------- Escolha da edição ---------- */
+.edicao-livro {
+  margin: -8px 0 14px;
+  font-family: var(--fonte-titulo);
+  font-style: italic;
+  font-size: 1.15rem;
+  color: var(--texto-suave);
+}
+
+.abas-idioma {
+  display: flex;
+  gap: 6px;
+  border-bottom: 1.5px solid var(--linha);
+}
+.abas-idioma button {
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--texto-suave);
+  background: none;
+  border: none;
+  padding: 8px 14px;
+  margin-bottom: -1.5px;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+}
+.abas-idioma button[aria-selected="true"] {
+  color: var(--acento);
+  border-bottom-color: var(--acento);
+}
+.abas-idioma .contador {
+  font-weight: 400;
+}
+
+/* ---------- Revisão: título com estrela e info da edição ---------- */
+.titulo-com-estrela {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.titulo-com-estrela h2 { margin: 0; }
+
+.info-edicao {
+  margin: -4px 0 14px;
+  font-size: 0.9rem;
+  color: var(--texto-suave);
+}
+.info-edicao strong { color: var(--texto); }
+
+.link {
+  font: inherit;
+  font-weight: 700;
+  color: var(--acento);
+  background: none;
+  border: none;
+  padding: 0 0 0 4px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.dica-pagina {
+  display: block;
+  margin-top: 4px;
+  color: var(--texto-suave);
+  font-size: 0.8rem;
 }
 
 /* ---------- Revisão ---------- */

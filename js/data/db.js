@@ -37,6 +37,11 @@ function withDefaults(fields) {
     location: "estante",
     status: "quero ler",
     currentPage: 0,
+    // Histórico de atualizações de leitura: [{ date, page }].
+    // Permite mostrar quantas páginas ela leu desde a última atualização.
+    progressLog: [],
+    favorite: false,
+    edition: null, // { publisher, year, lang } da edição escolhida
     startDate: "",
     endDate: "",
     rating: 0,

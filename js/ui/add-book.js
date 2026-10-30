@@ -1,28 +1,38 @@
-// Janela de cadastro de livro, em dois passos:
-//   1. Buscar na Open Library e escolher um resultado
-//   2. Revisar os dados (tudo editável) e guardar
+// Janela de cadastro de livro, em três passos:
+//   1. Buscar na Open Library (português ou inglês) e escolher o livro
+//   2. Escolher a edição (define capa, número de páginas e ISBN)
+//   3. Revisar e guardar (status, página atual, favorito, categorias)
 // Também dá para pular a busca e cadastrar à mão.
 
 import * as db from "../data/db.js";
-import { searchBooks, findIsbn, coverUrl, suggestCategories } from "../services/openlibrary.js";
+import { searchBooks, getEditions, coverUrl, suggestCategories, LANGUAGES } from "../services/openlibrary.js";
 import { createCategoryPicker } from "./category-picker.js";
+import { createStar } from "./favorite-star.js";
 
 const SEARCH_DELAY = 450; // espera ela parar de digitar (ms)
 
-let dialog, searchStep, reviewForm, searchInput, statusEl, resultsEl, coverImg;
-let picker;
-let searchTimer;
-let searchController;
+let dialog, steps, searchInput, statusEl, resultsEl;
+let editionStatusEl, editionListEl, tabsEl;
+let form, coverImg, picker, star;
+let searchTimer, searchController, editionController;
+
+// O livro que está sendo cadastrado (preenchido pela busca ou à mão).
+let draft = null;
+// Edições já carregadas: { por: [...], eng: [...] } e a aba atual.
+let editions = {};
+let currentLang = "por";
+
+const today = () => new Date().toISOString().slice(0, 10);
 
 function build() {
   dialog = document.createElement("dialog");
   dialog.className = "janela-cadastro";
   dialog.innerHTML = `
     <div class="janela">
-      <section class="passo-busca">
+      <section class="passo" data-passo="busca">
         <h2>Novo livro</h2>
         <form class="busca" role="search">
-          <input type="search" name="q" placeholder="Busque pelo título ou autor…" autocomplete="off" aria-label="Buscar livro">
+          <input type="search" name="q" placeholder="Busque pelo título ou autor, em português ou inglês…" autocomplete="off" aria-label="Buscar livro">
           <button class="botao" type="submit">Buscar</button>
         </form>
         <p class="busca-status" aria-live="polite"></p>
@@ -33,8 +43,27 @@ function build() {
         </div>
       </section>
 
-      <form class="passo-revisar" hidden>
-        <h2>Revisar livro</h2>
+      <section class="passo" data-passo="edicao" hidden>
+        <h2>Qual é a sua edição?</h2>
+        <p class="edicao-livro"></p>
+        <div class="abas-idioma" role="tablist" aria-label="Idioma da edição">
+          ${Object.entries(LANGUAGES)
+            .map(([code, name]) => `<button type="button" role="tab" data-lang="${code}">${name} <span class="contador"></span></button>`)
+            .join("")}
+        </div>
+        <p class="busca-status edicao-status" aria-live="polite"></p>
+        <ul class="resultados edicoes"></ul>
+        <div class="acoes">
+          <button class="botao secundario" type="button" data-acao="voltar-busca">Voltar</button>
+          <button class="botao secundario" type="button" data-acao="pular-edicao">Não sei, pular</button>
+        </div>
+      </section>
+
+      <form class="passo passo-revisar" data-passo="revisar" hidden>
+        <div class="titulo-com-estrela">
+          <h2>Revisar livro</h2>
+          <span class="lugar-estrela"></span>
+        </div>
         <div class="revisar-grade">
           <div class="capa-previa">
             <img alt="Capa do livro">
@@ -49,75 +78,99 @@ function build() {
               <label for="cad-autor">Autor(a)</label>
               <input id="cad-autor" name="author" autocomplete="off">
             </div>
+            <p class="info-edicao"></p>
+            <div class="campo campo-paginas">
+              <label for="cad-paginas">Número de páginas</label>
+              <input id="cad-paginas" name="pages" type="number" min="1" inputmode="numeric">
+            </div>
             <div class="linha-campos">
               <div class="campo">
-                <label for="cad-paginas">Páginas</label>
-                <input id="cad-paginas" name="pages" type="number" min="1" inputmode="numeric">
+                <label for="cad-status">Status</label>
+                <select id="cad-status" name="status">
+                  <option value="quero ler">Quero ler</option>
+                  <option value="lendo">Lendo</option>
+                  <option value="lido">Lido</option>
+                </select>
               </div>
-              <div class="campo">
-                <label for="cad-isbn">ISBN</label>
-                <input id="cad-isbn" name="isbn" autocomplete="off" inputmode="numeric">
+              <div class="campo campo-pagina-atual" hidden>
+                <label for="cad-pagina-atual">Em que página você está?</label>
+                <input id="cad-pagina-atual" name="currentPage" type="number" min="0" inputmode="numeric">
+                <small class="dica-pagina"></small>
               </div>
-            </div>
-            <div class="campo">
-              <label for="cad-status">Status</label>
-              <select id="cad-status" name="status">
-                <option value="quero ler">Quero ler</option>
-                <option value="lendo">Lendo</option>
-                <option value="lido">Lido</option>
-              </select>
             </div>
           </div>
-        </div>
-        <div class="campo">
-          <label for="cad-capa">Link da capa <span class="opcional">(opcional)</span></label>
-          <input id="cad-capa" name="coverUrl" type="url" placeholder="https://…" autocomplete="off">
         </div>
         <div class="campo">
           <span class="rotulo">Categorias</span>
           <div class="seletor-categorias"></div>
         </div>
         <div class="acoes">
-          <button class="botao secundario" type="button" data-acao="voltar">Voltar</button>
+          <button class="botao secundario" type="button" data-acao="voltar-revisar">Voltar</button>
           <button class="botao" type="submit">Guardar na estante</button>
         </div>
       </form>
     </div>`;
   document.body.appendChild(dialog);
 
-  searchStep = dialog.querySelector(".passo-busca");
-  reviewForm = dialog.querySelector(".passo-revisar");
+  steps = Object.fromEntries([...dialog.querySelectorAll(".passo")].map((el) => [el.dataset.passo, el]));
   searchInput = dialog.querySelector('input[name="q"]');
-  statusEl = dialog.querySelector(".busca-status");
-  resultsEl = dialog.querySelector(".resultados");
-  coverImg = dialog.querySelector(".capa-previa img");
+  statusEl = steps.busca.querySelector(".busca-status");
+  resultsEl = steps.busca.querySelector(".resultados");
+  editionStatusEl = steps.edicao.querySelector(".edicao-status");
+  editionListEl = steps.edicao.querySelector(".edicoes");
+  tabsEl = steps.edicao.querySelector(".abas-idioma");
+  form = steps.revisar;
+  coverImg = form.querySelector(".capa-previa img");
 
-  // Busca enquanto digita (com uma pequena espera) ou ao apertar Enter.
+  star = createStar();
+  form.querySelector(".lugar-estrela").appendChild(star.element);
+
+  // Passo 1: busca enquanto digita (com uma pequena espera) ou ao apertar Enter.
   searchInput.addEventListener("input", () => {
     clearTimeout(searchTimer);
     const q = searchInput.value.trim();
     if (q.length >= 3) searchTimer = setTimeout(() => runSearch(q), SEARCH_DELAY);
   });
-  dialog.querySelector(".busca").addEventListener("submit", (event) => {
+  steps.busca.querySelector(".busca").addEventListener("submit", (event) => {
     event.preventDefault();
     clearTimeout(searchTimer);
     const q = searchInput.value.trim();
     if (q) runSearch(q);
   });
+  on("manual", () => showReview({ manual: true, title: searchInput.value.trim() }));
+  on("fechar", () => dialog.close());
 
-  dialog.querySelector('[data-acao="manual"]').addEventListener("click", () =>
-    showReview({ title: searchInput.value.trim() })
-  );
-  dialog.querySelector('[data-acao="fechar"]').addEventListener("click", () => dialog.close());
-  dialog.querySelector('[data-acao="voltar"]').addEventListener("click", showSearch);
+  // Passo 2: abas de idioma e botões.
+  tabsEl.addEventListener("click", (event) => {
+    const tab = event.target.closest("[data-lang]");
+    if (tab) selectLang(tab.dataset.lang);
+  });
+  on("voltar-busca", () => showStep("busca"));
+  on("pular-edicao", () => showReview(fromWork(draft.result)));
 
-  // A prévia da capa acompanha o link digitado.
-  reviewForm.coverUrl.addEventListener("input", () => setCover(reviewForm.coverUrl.value.trim()));
+  // Passo 3
+  on("voltar-revisar", () => showStep(draft.manual ? "busca" : "edicao"));
+  form.status.addEventListener("change", updateCurrentPageField);
+  form.pages.addEventListener("input", updateCurrentPageField);
+  form.addEventListener("submit", save);
   coverImg.addEventListener("error", () => setCover(""));
 
-  reviewForm.addEventListener("submit", save);
-  dialog.addEventListener("close", () => searchController?.abort());
+  dialog.addEventListener("close", () => {
+    searchController?.abort();
+    editionController?.abort();
+  });
 }
+
+function on(action, fn) {
+  dialog.querySelector(`[data-acao="${action}"]`).addEventListener("click", fn);
+}
+
+function showStep(name) {
+  Object.entries(steps).forEach(([key, el]) => (el.hidden = key !== name));
+  if (name === "busca") searchInput.focus();
+}
+
+// ---------- Passo 1: busca ----------
 
 async function runSearch(query) {
   searchController?.abort(); // cancela a busca anterior, se ainda estiver em andamento
@@ -137,67 +190,192 @@ async function runSearch(query) {
   }
 }
 
+function thumb(coverId, title) {
+  return coverId
+    ? `<img src="${coverUrl(coverId, "M")}" alt="" loading="lazy">`
+    : `<span class="miniatura-vazia">${escapeHtml(title.charAt(0))}</span>`;
+}
+
 function resultItem(result) {
+  const original = result.displayTitle !== result.title ? `<em class="original">${escapeHtml(result.title)}</em>` : "";
+  const details = [result.author, result.year].filter(Boolean).join(" · ");
+  return listButton(
+    `${thumb(result.coverId, result.displayTitle)}
+     <span><strong>${escapeHtml(result.displayTitle)}</strong>${original}<small>${escapeHtml(details)}</small></span>`,
+    () => chooseWork(result)
+  );
+}
+
+function listButton(html, onClick) {
   const li = document.createElement("li");
   const button = document.createElement("button");
   button.type = "button";
   button.className = "resultado";
-  const thumb = result.coverId
-    ? `<img src="${coverUrl(result.coverId, "M")}" alt="" loading="lazy">`
-    : `<span class="miniatura-vazia">${escapeHtml(result.title.charAt(0))}</span>`;
-  const details = [result.author, result.year, result.pages && `${result.pages} páginas`]
-    .filter(Boolean)
-    .join(" · ");
-  button.innerHTML = `${thumb}<span><strong>${escapeHtml(result.title)}</strong><small>${escapeHtml(details)}</small></span>`;
-  button.addEventListener("click", () => choose(result));
+  button.innerHTML = html;
+  button.addEventListener("click", onClick);
   li.appendChild(button);
   return li;
 }
 
-async function choose(result) {
-  showReview({
-    title: result.title,
-    author: result.author,
-    pages: result.pages,
-    isbn: result.isbn,
-    coverUrl: coverUrl(result.coverId, "L"),
-    suggestions: suggestCategories(result.subjects),
-  });
-  // Sem ISBN na edição principal? Procura nas outras edições sem travar a tela.
-  if (!result.isbn && result.workKey) {
-    reviewForm.isbn.placeholder = "procurando…";
-    const isbn = await findIsbn(result.workKey);
-    if (!reviewForm.isbn.value) reviewForm.isbn.value = isbn;
-    reviewForm.isbn.placeholder = "";
+// ---------- Passo 2: edição ----------
+
+function chooseWork(result) {
+  draft = { result };
+  editions = {};
+  steps.edicao.querySelector(".edicao-livro").textContent = `${result.displayTitle}${result.author ? " · " + result.author : ""}`;
+  showStep("edicao");
+  loadEditions(result);
+  // Começa na aba do idioma em que ela buscou.
+  selectLang(result.lang || "por");
+}
+
+async function loadEditions(result) {
+  editionController?.abort();
+  editionController = new AbortController();
+  const { signal } = editionController;
+  // Carrega os dois idiomas ao mesmo tempo; cada aba atualiza quando chegar.
+  await Promise.all(
+    Object.keys(LANGUAGES).map(async (lang) => {
+      try {
+        editions[lang] = await getEditions(result.workKey, lang, { signal });
+      } catch (err) {
+        if (err.name === "AbortError") return;
+        console.error(err);
+        editions[lang] = null; // null = erro
+      }
+      updateTabs();
+      if (lang === currentLang) renderEditions();
+    })
+  );
+  // Nenhuma edição em nenhum idioma: segue com os dados gerais do livro.
+  if (!signal.aborted && Object.values(editions).every((list) => Array.isArray(list) && !list.length)) {
+    showReview(fromWork(result));
   }
 }
 
-function showSearch() {
-  reviewForm.hidden = true;
-  searchStep.hidden = false;
-  searchInput.focus();
+function updateTabs() {
+  tabsEl.querySelectorAll("[data-lang]").forEach((tab) => {
+    const list = editions[tab.dataset.lang];
+    tab.querySelector(".contador").textContent = Array.isArray(list) ? `(${list.length})` : "";
+    tab.setAttribute("aria-selected", String(tab.dataset.lang === currentLang));
+  });
 }
 
-function showReview({ title = "", author = "", pages = "", isbn = "", coverUrl = "", suggestions = [] }) {
-  reviewForm.reset();
-  reviewForm.elements.title.value = title;
-  reviewForm.author.value = author;
-  reviewForm.pages.value = pages || "";
-  reviewForm.isbn.value = isbn;
-  reviewForm.coverUrl.value = coverUrl;
-  setCover(coverUrl);
-  picker = createCategoryPicker(reviewForm.querySelector(".seletor-categorias"), {
-    selected: suggestions,
-    suggestions, // se ela remover uma sugestão, ela continua disponível com "+"
+function selectLang(lang) {
+  currentLang = lang;
+  updateTabs();
+  renderEditions();
+}
+
+function renderEditions() {
+  const list = editions[currentLang];
+  editionListEl.replaceChildren();
+  if (list === undefined) {
+    editionStatusEl.textContent = "Procurando edições… (a Open Library às vezes demora uns segundos)";
+  } else if (list === null) {
+    editionStatusEl.textContent = "Não consegui carregar as edições. Você pode tentar de novo ou pular.";
+  } else if (!list.length) {
+    editionStatusEl.textContent = `Nenhuma edição em ${LANGUAGES[currentLang].toLowerCase()} encontrada.`;
+  } else {
+    editionStatusEl.textContent = "Escolha a edição que você tem (ou quer ter):";
+    editionListEl.replaceChildren(...list.map(editionItem));
+  }
+}
+
+function editionItem(ed) {
+  const details = [ed.publisher, ed.year, ed.pages ? `${ed.pages} páginas` : "páginas não informadas"]
+    .filter(Boolean)
+    .join(" · ");
+  return listButton(
+    `${thumb(ed.coverId, ed.title)}<span><strong>${escapeHtml(ed.title)}</strong><small>${escapeHtml(details)}</small></span>`,
+    () => showReview(fromEdition(draft.result, ed))
+  );
+}
+
+// Dados do livro a partir da edição escolhida.
+function fromEdition(result, ed) {
+  return {
+    result,
+    title: ed.title || result.displayTitle,
+    author: result.author,
+    pages: ed.pages || result.pages,
+    pagesApprox: !ed.pages && Boolean(result.pages),
+    isbn: ed.isbn,
+    coverUrl: coverUrl(ed.coverId || result.coverId),
+    edition: { publisher: ed.publisher, year: ed.year, lang: ed.lang },
+    suggestions: suggestCategories(result.subjects),
+  };
+}
+
+// Dados gerais da obra, quando ela pula a escolha de edição.
+function fromWork(result) {
+  return {
+    result,
+    title: result.displayTitle,
+    author: result.author,
+    pages: result.pages,
+    pagesApprox: Boolean(result.pages),
+    isbn: "",
+    coverUrl: coverUrl(result.coverId),
+    edition: null,
+    suggestions: suggestCategories(result.subjects),
+  };
+}
+
+// ---------- Passo 3: revisar ----------
+
+function showReview(data) {
+  draft = { manual: false, title: "", author: "", pages: null, isbn: "", coverUrl: "", edition: null, suggestions: [], ...data };
+  form.reset();
+  form.elements.title.value = draft.title;
+  form.author.value = draft.author;
+  star.set(false);
+  setCover(draft.coverUrl);
+
+  // Páginas: digitáveis só no cadastro manual; senão vêm da edição.
+  form.querySelector(".campo-paginas").hidden = !draft.manual;
+  form.pages.value = "";
+  const info = form.querySelector(".info-edicao");
+  info.hidden = draft.manual;
+  if (!draft.manual) info.innerHTML = editionInfo(draft);
+  info.querySelector(".trocar-edicao")?.addEventListener("click", () => showStep("edicao"));
+
+  picker = createCategoryPicker(form.querySelector(".seletor-categorias"), {
+    selected: draft.suggestions,
+    suggestions: draft.suggestions, // se ela remover uma sugestão, ela continua disponível com "+"
     known: db.getAllCategories(),
   });
-  searchStep.hidden = true;
-  reviewForm.hidden = false;
-  reviewForm.elements.title.focus();
+  updateCurrentPageField();
+  showStep("revisar");
+  form.elements.title.focus();
+}
+
+function editionInfo(d) {
+  const pages = d.pages
+    ? `<strong>${d.pagesApprox ? "~" : ""}${d.pages} páginas</strong>${d.pagesApprox ? " (aproximado)" : ""}`
+    : "<strong>páginas não informadas</strong>";
+  const ed = d.edition;
+  const extra = ed ? [ed.publisher, ed.year, LANGUAGES[ed.lang]].filter(Boolean).join(", ") : "";
+  return `${pages}${extra ? " · " + escapeHtml(extra) : ""}
+    <button type="button" class="link trocar-edicao">trocar edição</button>`;
+}
+
+function totalPages() {
+  return draft.manual ? Number(form.pages.value) || null : draft.pages;
+}
+
+// Mostra "Em que página você está?" só quando o status é "Lendo".
+function updateCurrentPageField() {
+  const reading = form.status.value === "lendo";
+  const field = form.querySelector(".campo-pagina-atual");
+  field.hidden = !reading;
+  const total = totalPages();
+  form.currentPage.max = total || "";
+  form.querySelector(".dica-pagina").textContent = total ? `de ${total} páginas` : "";
 }
 
 function setCover(url) {
-  const box = dialog.querySelector(".capa-previa");
+  const box = form.querySelector(".capa-previa");
   box.classList.toggle("tem-capa", Boolean(url));
   if (url) coverImg.src = url;
   else coverImg.removeAttribute("src");
@@ -205,19 +383,37 @@ function setCover(url) {
 
 async function save(event) {
   event.preventDefault();
-  const f = reviewForm;
+  const status = form.status.value;
+  const pages = totalPages();
   const categories = picker.getSelected();
-  await db.addBook({
-    title: f.elements.title.value.trim(),
-    author: f.author.value.trim(),
-    pages: Number(f.pages.value) || null,
-    isbn: f.isbn.value.replace(/[^0-9X]/gi, ""),
-    coverUrl: f.coverUrl.value.trim(),
-    status: f.status.value,
+  const favorite = star.isActive();
+
+  let currentPage = 0;
+  if (status === "lendo") currentPage = Math.min(Number(form.currentPage.value) || 0, pages || Infinity);
+  if (status === "lido") currentPage = pages || 0;
+
+  const book = await db.addBook({
+    title: form.elements.title.value.trim(),
+    author: form.author.value.trim(),
+    pages,
+    isbn: draft.isbn,
+    coverUrl: draft.coverUrl,
+    edition: draft.edition,
+    status,
+    currentPage,
+    progressLog: status === "lendo" ? [{ date: new Date().toISOString(), page: currentPage }] : [],
+    startDate: status === "lendo" ? today() : "",
+    favorite,
     categories,
   });
   await db.ensureCategories(categories);
+
+  const starRect = star.element.getBoundingClientRect();
   dialog.close();
+  // Avisa a estante para fazer a estrelinha voar até a prateleira de favoritos.
+  if (favorite) {
+    document.dispatchEvent(new CustomEvent("livro:favoritado", { detail: { id: book.id, fromRect: starRect } }));
+  }
 }
 
 function escapeHtml(text) {
@@ -229,6 +425,7 @@ export function openAddBook() {
   searchInput.value = "";
   statusEl.textContent = "";
   resultsEl.replaceChildren();
-  showSearch();
+  draft = null;
+  showStep("busca");
   dialog.showModal();
 }

@@ -207,6 +207,76 @@ dialog::backdrop {
   background: rgba(255, 250, 248, 0.8);
 }
 
+[hidden] { display: none !important; }
+
+/* ---------- Estrela de favorito ---------- */
+.estrela {
+  --ouro: #D4A64A;
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: var(--creme);
+  box-shadow: inset 0 0 0 1.5px var(--linha);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background 0.2s, transform 0.2s;
+}
+.estrela:hover { background: #FFF4DC; transform: scale(1.06); }
+.estrela svg {
+  width: 26px;
+  height: 26px;
+  fill: transparent;
+  stroke: var(--texto-suave);
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+  transition: fill 0.2s, stroke 0.2s;
+}
+.estrela.ativa { background: #FFF4DC; box-shadow: inset 0 0 0 1.5px #EBCB85; }
+.estrela.ativa svg { fill: var(--ouro); stroke: #B38530; }
+
+/* "Estouro": a estrela pula e solta faíscas */
+.estrela.estourando svg { animation: estrela-pulo 0.6s cubic-bezier(.3, 1.6, .5, 1); }
+.estrela .faisca {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  margin: -3px;
+  border-radius: 50%;
+  background: var(--ouro);
+  opacity: 0;
+  pointer-events: none;
+}
+.estrela.estourando .faisca { animation: faisca 0.7s ease-out; }
+.estrela .faisca:nth-of-type(even) { background: var(--rosa-doce); width: 5px; height: 5px; }
+
+@keyframes estrela-pulo {
+  0% { transform: scale(1) rotate(0); }
+  35% { transform: scale(1.5) rotate(-15deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+@keyframes faisca {
+  0% { opacity: 1; transform: rotate(var(--a)) translateY(0) scale(1); }
+  100% { opacity: 0; transform: rotate(var(--a)) translateY(-30px) scale(0.3); }
+}
+
+/* Estrelinha que voa até a prateleira de favoritos */
+.estrela-voando {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 28px;
+  height: 28px;
+  z-index: 1000;
+  pointer-events: none;
+  filter: drop-shadow(0 0 6px rgba(255, 215, 120, 0.9));
+}
+.estrela-voando svg { width: 100%; height: 100%; fill: #D4A64A; stroke: #B38530; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     transition-duration: 0.01ms !important;

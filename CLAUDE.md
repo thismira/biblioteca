@@ -36,13 +36,22 @@ em JSON.
 - `js/main.js` — inicialização e rotas.
 - `js/data/` — `db.js` (fachada) e `local-store.js` (implementação).
 - `js/services/` — Open Library, cor da lombada, Spotify, Amazon.
-  - `openlibrary.js`: busca sem pedir a lista completa de ISBNs (pode ter
-    milhares); ISBN vem da edição principal ou de `findIsbn()` ao escolher.
-    `suggestCategories()` traduz assuntos em inglês para categorias em PT.
+  - `openlibrary.js`: busca (PT ou EN) sem pedir a lista de ISBNs (pode ter
+    milhares); mostra o título da edição que bateu com a busca.
+    `getEditions(workKey, lang)` usa a Query API (`/query.json`), que filtra
+    o idioma no servidor — a lista comum `/editions.json` vem misturada e
+    quase não traz edições em português. Capa, páginas e ISBN vêm da edição
+    escolhida. `suggestCategories()` traduz assuntos para categorias em PT.
 - `js/ui/` — estante, ordenação, FLIP, arrastar, página do livro, cadastro,
   lista de desejos, backup, diálogos.
+  - `add-book.js`: cadastro em 3 passos (buscar → edição → revisar).
+    ISBN e link da capa não aparecem para ela (o ISBN fica guardado para o
+    link da Amazon). Páginas só são digitáveis no cadastro manual.
   - `category-picker.js`: chips de categoria reutilizável (cadastro e
     página do livro).
+  - `favorite-star.js`: estrela que "estoura" com faíscas e `flyStar()`, a
+    estrelinha que voa até a prateleira de favoritos (evento
+    `livro:favoritado`, tratado em `main.js`).
   - Atenção em formulários: use `form.elements.title`, não `form.title`
     (que é o atributo title do próprio formulário).
 - `js/utils/` — funções de cor e utilidades.
@@ -75,10 +84,18 @@ dentro da pasta) e o `.claude/launch.json` só se conecta a
 { id, title, author, coverUrl, pages, isbn, categories: [],
   location: "estante" | "desejos",
   status: "quero ler" | "lendo" | "lido",
-  currentPage, startDate, endDate, rating, review,
+  currentPage, progressLog: [{ date, page }], favorite,
+  edition: { publisher, year, lang },
+  startDate, endDate, rating, review,
   quotes: [{ id, text, page }], spotifyUrl,
   spineColor, spineColorManual,
   wishPrice, wishPriceDate, createdAt, updatedAt }
 ```
 Configurações (`settings`): `sortBy`, `customOrder` (lista de ids),
 `categories` (criadas pela leitora).
+
+`progressLog` ganha uma entrada a cada atualização de página; a página do
+livro (etapa 4) usa isso para mostrar % que falta, páginas que faltam e
+páginas lidas desde a última atualização. Favoritos aparecem numa estante
+própria (plaquinha dourada) e com estrelinha na lombada também na estante
+principal.
