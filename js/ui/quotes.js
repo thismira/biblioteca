@@ -168,7 +168,9 @@ export function createQuotes(container, { getBook, save }) {
       if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 8) return (drag = null); // é rolagem
       if (Math.abs(dx) < 8) return;
       drag.dragging = true;
-      windowEl.setPointerCapture(drag.id);
+      // Continua recebendo o movimento mesmo se o dedo sair da caixa.
+      // (Pode falhar se o toque já foi cancelado; o arraste segue assim mesmo.)
+      try { windowEl.setPointerCapture(drag.id); } catch {}
     }
     move({ animate: false, offset: dx }); // o trecho acompanha o dedo
   });
