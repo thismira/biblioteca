@@ -35,18 +35,24 @@ export function shelfInfo(id) {
   return shelf ? { id: shelf.id, name: shelf.name, icon: "", covers: false, custom: true } : null;
 }
 
-// Livros de uma estante, já na ordem em que aparecem.
+// Livros de uma estante, já na ordem em que aparecem (o critério escolhido
+// naquela estante; em "Personalizado", a arrumação dela).
 export function shelfBooks(id) {
   const auto = AUTO_SHELVES.find((s) => s.id === id);
   if (auto) {
     const list = onShelf().filter(auto.filter);
-    return auto.order ? auto.order(list) : sortBooks(list, db.getSettings());
+    if (auto.order) return auto.order(list);
+    return sortBooks(list, db.getShelfSort(id), db.getSettings().customOrder);
   }
   const shelf = db.getShelf(id);
   if (!shelf) return [];
   const byId = new Map(onShelf().map((b) => [b.id, b]));
-  return shelf.bookIds.map((bid) => byId.get(bid)).filter(Boolean); // ordem da estante
+  const list = shelf.bookIds.map((bid) => byId.get(bid)).filter(Boolean);
+  return sortBooks(list, db.getShelfSort(id), shelf.bookIds); // arrumação = ordem da estante
 }
+
+// Pode escolher a ordem? (A "Lendo agora" tem ordem automática.)
+export const canSort = (id) => !AUTO_SHELVES.find((s) => s.id === id)?.order;
 
 // Estantes que aparecem na sala, na ordem: automáticas (as vazias somem,
 // menos "Todos os livros") e depois as criadas por ela (sempre aparecem).

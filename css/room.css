@@ -168,6 +168,22 @@
   font-weight: 700;
   color: var(--texto-suave);
 }
+.ordenar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--texto-suave);
+}
+.ordenar select {
+  width: auto;
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+}
 .vista-acoes {
   display: flex;
   flex-wrap: wrap;

@@ -73,6 +73,18 @@ soltar, lista de desejos com link para a Amazon UK e backup em JSON.
   - `reading-shelf.js`: estante "Lendo agora" com a CAPA de frente,
     barrinha de progresso e "32% · pág. 152"; o mais recente primeiro. Em
     telas estreitas as capas encolhem para caberem 2.
+  - `sort.js`: critérios ("personalizado", "cor", "titulo", "autor",
+    "data", "categoria"). Cor = arco-íris pela matiz da `spineColor()` em
+    faixas de 15°, do claro ao escuro em cada faixa; brancos/cinzas/pretos no
+    fim. Título ignora artigos iniciais; autor pelo sobrenome; data = término
+    (ou início) mais recente primeiro. Cada estante guarda o seu critério
+    (`settings.shelfSort`, `db.getShelfSort/setShelfSort`); a "Lendo agora"
+    tem ordem automática e não mostra o seletor (`canSort`).
+  - `flip.js`: `flipReorder(elements, change)` — anima a reorganização
+    (First/Last/Invert/Play): o livro sobe, flutua e se encaixa, em onda,
+    total ~1 s (PER_BOOK 620 ms + atraso escalonado). Só `transform`;
+    fora da tela não anima; trocar no meio parte da posição atual (cancela
+    as animações em andamento). Testado: 300 livros a ~58 fps.
   - `shelf-books-picker.js`: lista com caixinhas e busca para escolher os
     livros de uma estante criada por ela.
   - `findPlace(id)` em `main.js` acha o livro na estante aberta (capa ou
@@ -185,8 +197,8 @@ dentro da pasta) e o `.claude/launch.json` só se conecta a
   spinePhoto, spinePhotoAspect,     // foto da lombada (só livros físicos)
   wishPrice, wishPriceDate, createdAt, updatedAt }
 ```
-Configurações (`settings`): `sortBy`, `customOrder` (lista de ids; ordem
-das estantes automáticas), `categories` (criadas pela leitora), `shelves`
+Configurações (`settings`): `shelfSort` (critério por estante),
+`customOrder` (lista de ids; arrumação das estantes automáticas), `categories` (criadas pela leitora), `shelves`
 (estantes dela: `[{ id, name, bookIds, createdAt }]`).
 
 Não existe fonte automática de fotos de lombada (Open Library e Google

@@ -8,6 +8,8 @@ const DEFAULT_SETTINGS = {
   sortBy: "personalizado",
   customOrder: [],
   categories: [],
+  // Critério de ordenação escolhido em cada estante: { [idDaEstante]: "cor" }.
+  shelfSort: {},
   // Estantes criadas por ela: [{ id, name, bookIds, createdAt }].
   // `bookIds` também guarda a ordem de arrumação daquela estante.
   shelves: [],
@@ -152,7 +154,17 @@ export async function renameShelf(id, name) {
 // Apaga só a estante; os livros continuam na biblioteca.
 // Atenção: só chamar depois de a leitora confirmar.
 export async function deleteShelf(id) {
-  await updateSettings({ shelves: settings.shelves.filter((s) => s.id !== id) });
+  const { [id]: _, ...shelfSort } = settings.shelfSort;
+  await updateSettings({ shelves: settings.shelves.filter((s) => s.id !== id), shelfSort });
+}
+
+// Critério de ordenação de uma estante ("personalizado" se nunca escolheu).
+export function getShelfSort(id) {
+  return settings.shelfSort[id] || "personalizado";
+}
+
+export async function setShelfSort(id, sortBy) {
+  await updateSettings({ shelfSort: { ...settings.shelfSort, [id]: sortBy } });
 }
 
 // Define os livros de uma estante (na ordem dada).

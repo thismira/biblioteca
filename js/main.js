@@ -9,7 +9,9 @@ import * as db from "./data/db.js";
 import { createShelf } from "./ui/shelf.js";
 import { createReadingShelf } from "./ui/reading-shelf.js";
 import { createRoom } from "./ui/room.js";
-import { roomShelves, shelfInfo, shelfBooks } from "./ui/shelf-defs.js";
+import { roomShelves, shelfInfo, shelfBooks, canSort } from "./ui/shelf-defs.js";
+import { SORT_OPTIONS } from "./ui/sort.js";
+import { flipReorder } from "./ui/flip.js";
 import { openAddBook } from "./ui/add-book.js";
 import { flyStar } from "./ui/favorite-star.js";
 import { openBookDetail, closeBookDetail, isBookDetailOpen } from "./ui/book-detail.js";
@@ -119,6 +121,8 @@ function renderView() {
   $("vista-placa").textContent = `${info.icon ? info.icon + " " : ""}${info.name}`;
   $("vista-contagem").textContent = plural(books.length);
   $("vista-acoes").hidden = !info.custom;
+  $("vista-ordenar").hidden = !canSort(currentShelf);
+  $("vista-ordem").value = db.getShelfSort(currentShelf);
   const empty = $("vista-vazia");
   empty.hidden = books.length > 0;
   empty.textContent = info.custom
@@ -261,6 +265,15 @@ $("vista-acoes").addEventListener("click", async (event) => {
     history.replaceState(null, "", "#/");
     route();
   }
+});
+
+// ---------- Ordenar ----------
+// Trocar o critério reorganiza a estante com a animação FLIP.
+const sortSelect = $("vista-ordem");
+sortSelect.append(...SORT_OPTIONS.map(([value, label]) => new Option(label, value)));
+sortSelect.addEventListener("change", () => {
+  const shelfId = currentShelf;
+  flipReorder(shelf.elements, () => db.setShelfSort(shelfId, sortSelect.value));
 });
 
 $("btn-sala").addEventListener("click", backToRoom);
