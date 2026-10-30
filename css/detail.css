@@ -427,13 +427,87 @@ dialog.detalhe::backdrop { background: transparent; }
 .janela-recorte .acoes { margin-top: 16px; }
 .janela-recorte .espaco { flex: 1; }
 
-/* ---------- Trechos favoritos ---------- */
+/* ---------- Trechos favoritos (carrossel) ---------- */
+.quotes-carrossel {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px 8px;
+  margin-bottom: 18px;
+}
+.carrossel-janela {
+  overflow: hidden;
+  border-radius: 16px;
+  touch-action: pan-y;             /* o dedo rola a página para cima/baixo; para os lados, passa o trecho */
+  transition: height 0.4s ease;    /* acompanha a altura do trecho atual */
+}
+.carrossel-janela:focus-visible { outline: 3px solid var(--acento); outline-offset: 2px; }
 .quotes-lista {
   list-style: none;
-  margin: 0 0 16px;
+  margin: 0;
   padding: 0;
-  display: grid;
+  display: flex;
+  align-items: flex-start;
+  transition: transform 0.45s cubic-bezier(.3, .8, .3, 1);
+  will-change: transform;
+}
+.quote-slide {
+  flex: 0 0 100%;
+  padding: 4px; /* espaço para a sombra do cartão */
+  user-select: none;
+}
+.quote-slide .editando { user-select: text; }
+
+.carrossel-seta {
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: var(--creme);
+  box-shadow: inset 0 0 0 1.5px var(--linha), 0 2px 6px rgba(74, 44, 53, 0.1);
+  color: var(--acento);
+  font-family: var(--fonte-titulo);
+  font-size: 1.9rem;
+  line-height: 1;
+  padding-bottom: 4px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+.carrossel-seta:hover { background: var(--rosa-doce); transform: scale(1.06); }
+
+.carrossel-rodape {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   gap: 12px;
+  min-height: 20px;
+}
+.carrossel-pontos { display: flex; gap: 6px; }
+.ponto {
+  width: 9px;
+  height: 9px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--linha);
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+.ponto[aria-current="true"] { background: var(--acento); transform: scale(1.3); }
+.carrossel-contagem {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--texto-suave);
+}
+
+/* Com um trecho só: sem setas nem bolinhas */
+.quotes-carrossel.um-so { grid-template-columns: minmax(0, 1fr); }
+.quotes-carrossel.um-so .carrossel-seta,
+.quotes-carrossel.um-so .carrossel-rodape { display: none; }
+
+@media (max-width: 520px) {
+  .carrossel-seta { width: 34px; height: 34px; font-size: 1.6rem; }
 }
 .quote {
   position: relative;

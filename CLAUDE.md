@@ -62,8 +62,11 @@ em JSON.
     `main.js`; "voltar" do navegador fecha). Tudo salva na hora. Animações
     usam `done()` (tempo máximo) e um pedido de fechar durante a abertura é
     guardado e executado depois — não remover essas proteções.
-  - `quotes.js`: trechos favoritos na página do livro (em ordem de página,
-    editar no lugar, apagar sempre com `confirmDialog`). Quebras de linha
+  - `quotes.js`: trechos favoritos na página do livro, num carrossel (um
+    por vez; setas, bolinhas, arrastar com o dedo via pointer events, setas
+    do teclado; do último volta ao primeiro; altura acompanha o trecho via
+    ResizeObserver). Em ordem de página, editar no lugar, apagar sempre com
+    `confirmDialog`; trecho novo faz o carrossel ir até ele. Quebras de linha
     são mantidas (`white-space: pre-line`). Botão "📷 Fotografar trecho":
     recorta a foto e lê o texto (`services/ocr.js`); confiança < 45 não
     preenche nada, < 75 preenche com aviso para conferir.
