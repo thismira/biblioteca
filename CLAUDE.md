@@ -95,8 +95,10 @@ soltar, lista de desejos com link para a Amazon UK e backup em JSON.
     fora da tela não anima; trocar no meio parte da posição atual (cancela
     as animações em andamento); livros que reaparecem surgem suavemente.
     Testado: 300 livros a ~58 fps.
-  - `shelf-books-picker.js`: lista com caixinhas e busca para escolher os
-    livros de uma estante criada por ela.
+  - `shelf-books-picker.js`: lista com caixinhas para escolher os livros de
+    uma estante dela: busca sem acentos (título, autor, categoria), filtros
+    por status, categoria e nota, "Só os marcados", e "Marcar/Desmarcar
+    todos" que valem só para os livros visíveis no filtro.
   - `findPlace(id)` em `main.js` acha o livro na estante aberta (capa ou
     lombada); usado pelas animações de abrir/fechar e de chegada.
   - `book-detail.js`: página do livro (um `<dialog>` em tela cheia).

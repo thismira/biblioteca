@@ -12,7 +12,7 @@ const CLOSE_DELAY = 400; // ms até fechar a lista depois de abrir um livro
 const STATUS = { "quero ler": "Quero ler", lendo: "Lendo", lido: "Lido" };
 
 // Minúsculas e sem acentos.
-const plain = (text) => String(text || "").normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+export const plain = (text) => String(text || "").normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
 
 function statusText(book) {
   if (book.status === "lendo" && book.pages) {
