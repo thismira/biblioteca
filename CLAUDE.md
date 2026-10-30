@@ -86,10 +86,15 @@ em JSON.
   `feTurbulence` em `--veio-h`/`--veio-v`). Interior mais escuro para
   dar contraste aos livros.
 - Lombadas realistas: volume em degradê, trama de tecido e granulado; 4
-  acabamentos fixos por livro (`data-estilo` 0–3). O texto é montado na
-  horizontal e girado 90°; título centralizado, autor em maiúsculas no pé.
-  O tamanho da letra é calculado medindo o texto (`measureText`) em
-  `js/ui/shelf.js`.
+  acabamentos fixos por livro (`data-estilo` 0–3: filetes, faixas escuras,
+  filetes dourados, filete simples — **sem moldura em volta do título**, a
+  dona não gostou). O texto é montado na horizontal e girado 90°; título
+  centralizado, autor em maiúsculas no pé.
+- **Regra: nada na lombada pode ser cortado** (sem "…"). `fitText()` em
+  `js/ui/shelf.js` mede o texto (`measureText`), divide o título em até 3
+  linhas equilibradas (cada linha vira um `<span>`) e escolhe a maior letra
+  que cabe; o autor usa nome completo ou sobrenome e diminui a letra em vez
+  de cortar.
 - Hover na lombada: o livro sobe 14px, cresce 4,5% e a sombra aumenta
   ("puxar"). Usa as propriedades CSS `translate`/`scale`, deixando
   `transform` livre para as animações FLIP e de arrastar. (A versão com

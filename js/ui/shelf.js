@@ -22,10 +22,10 @@ export function spineSize(book) {
   const pages = book.pages || DEFAULT_PAGES;
   const t = Math.min(Math.max((pages - 100) / 700, 0), 1);
   const jitter = (hashString(book.id) % 13) - 6; // variação fixa de -6 a +6 px
-  const height = Math.round(160 + 80 * t + jitter);
+  const height = Math.round(168 + 80 * t + jitter);
   const width = hasPhoto(book) && book.spinePhotoAspect
     ? Math.round(Math.min(Math.max(height * book.spinePhotoAspect, 16), 80))
-    : Math.round(Math.min(Math.max(12 + Math.sqrt(pages) * 1.6, 22), 60));
+    : Math.round(Math.min(Math.max(12 + Math.sqrt(pages) * 1.6, 26), 60));
   return { height, width };
 }
 
@@ -36,55 +36,88 @@ function measure(text, font) {
   return ruler.measureText(text).width;
 }
 
-const AUTHOR_GAP = 12; // respiro entre título e autor (igual ao CSS)
-const TITLE_FONT = (size) => `700 ${size}px "Cormorant Garamond"`;
-// Autor: maiúsculas de 10px com espaçamento de 0,06em entre letras.
-const authorWidth = (text) =>
-  measure(text.toUpperCase(), '700 10px "Nunito Sans"') + text.length * 0.6;
+const AUTHOR_GAP = 12;      // respiro entre título e autor (igual ao CSS)
+const LINE_HEIGHT = 1.05;  // altura da linha do título (igual ao CSS)
+const MAX_LINES = 3;       // o título pode usar até 3 linhas
+const TITLE_MAX = 17;      // maior letra do título (px)
+const TITLE_MIN = 7;       // menor letra do título (px), só em casos extremos
+const AUTHOR_MAX = 10;     // maior letra do autor (px)
+const AUTHOR_MIN = 6.5;    // menor letra do autor (px)
+const SAFETY = 0.95;       // folga de 5% para diferenças de desenho das letras
 
-// Largura da linha mais longa quando o título é dividido em 2 linhas
-// do jeito mais equilibrado possível (medido no tamanho `size`).
-function longestOfTwoLines(title, size) {
-  const words = title.split(/\s+/);
-  if (words.length < 2) return measure(title, TITLE_FONT(size));
-  let best = Infinity;
-  for (let i = 1; i < words.length; i++) {
-    const a = measure(words.slice(0, i).join(" "), TITLE_FONT(size));
-    const b = measure(words.slice(i).join(" "), TITLE_FONT(size));
-    best = Math.min(best, Math.max(a, b));
+// Largura de um texto do título com letra de 1px (a largura cresce
+// proporcionalmente ao tamanho da letra).
+const titleWidth = (text) => measure(text, '700 100px "Cormorant Garamond"') / 100;
+// Autor: maiúsculas com espaçamento de 0,06em entre letras, a 1px.
+const authorWidth = (text) =>
+  measure(text.toUpperCase(), '700 100px "Nunito Sans"') / 100 + text.length * 0.06;
+
+// Divide as palavras em `n` linhas do jeito mais equilibrado possível
+// (a linha mais comprida fica o mais curta possível).
+function splitLines(words, n) {
+  if (n === 1) {
+    const line = words.join(" ");
+    return { lines: [line], widest: titleWidth(line) };
+  }
+  let best = null;
+  for (let i = 1; i <= words.length - (n - 1); i++) {
+    const first = words.slice(0, i).join(" ");
+    const rest = splitLines(words.slice(i), n - 1);
+    const widest = Math.max(titleWidth(first), rest.widest);
+    if (!best || widest < best.widest) best = { lines: [first, ...rest.lines], widest };
   }
   return best;
 }
 
-// Decide o tamanho da letra, o número de linhas do título e se o autor
-// aparece completo ou só o sobrenome, medindo o texto de verdade.
-function fitText(book, width, height, framed) {
+// Decide como escrever título e autor na lombada SEM CORTAR nada:
+// - autor: nome completo se couber, senão sobrenome; a letra diminui se precisar;
+// - título: 1, 2 ou 3 linhas, com quebras calculadas aqui, na maior letra
+//   que couber no comprimento e na espessura da lombada.
+function fitText(book, width, height) {
   // descontando margens, enfeites e a estrelinha (se for favorito)
-  const usable = height - 50 - (book.favorite ? STAR_SPACE : 0);
-  const authorMax = usable * 0.36;
-  let author = book.author || "";
-  if (authorWidth(author) > authorMax) author = author.split(/\s+/).pop();
-  const authorLen = author ? Math.min(authorWidth(author), authorMax) + AUTHOR_GAP : 0;
+  const usable = height - 55 - (book.favorite ? STAR_SPACE : 0);
+
+  let author = "";
+  let authorSize = AUTHOR_MAX;
+  let authorLen = 0;
+  if (book.author) {
+    let room = usable * 0.36;
+    const full = book.author.trim();
+    const surname = full.split(/\s+/).pop();
+    if (authorWidth(full) * 8.5 <= room) {
+      author = full; // nome completo cabe com letra de pelo menos 8,5px
+    } else {
+      author = surname;
+      // Nem o sobrenome cabe com letra mínima: dá um pouco mais de espaço.
+      if (authorWidth(surname) * AUTHOR_MIN > room) room = usable * 0.5;
+    }
+    authorSize = Math.max(AUTHOR_MIN, Math.min(AUTHOR_MAX, room / authorWidth(author)));
+    authorLen = authorWidth(author) * authorSize + AUTHOR_GAP;
+  }
+
   // O título usa o espaço que sobra ao lado do autor. No CSS, o espaçador
   // do outro lado encolhe se faltar espaço: assim o título fica o mais
   // centralizado possível, sem nunca encostar no autor.
-  // A moldura do acabamento 3 ocupa 7px de cada lado do título.
-  const titleSpace = usable - authorLen - (framed ? 14 : 0);
-
-  // Maior letra possível em 1 linha e em 2 linhas; fica com a maior,
-  // mas prefere 2 linhas quando 1 linha não cabe nem com letra mínima.
-  const base = Math.min(Math.max(width * 0.42, 11), 17);
-  const oneLineIdeal = base * (titleSpace / measure(book.title, TITLE_FONT(base)));
-  const oneLine = Math.max(11, Math.min(base, oneLineIdeal));
-  const twoLines = Math.min(
-    base,
-    (width - 8) / 2.2,
-    base * (titleSpace / longestOfTwoLines(book.title, base))
-  );
-  if (twoLines >= 10 && (twoLines > oneLine || oneLineIdeal < 11)) {
-    return { fontSize: twoLines, lines: 2, author, authorLen, titleSpace };
+  const titleSpace = usable - authorLen;
+  const words = book.title.trim().split(/\s+/);
+  const cap = Math.min(TITLE_MAX, Math.max(11, width * 0.5));
+  let best = null;
+  for (let n = 1; n <= Math.min(MAX_LINES, words.length); n++) {
+    const { lines, widest } = splitLines(words, n);
+    const byLength = (titleSpace * SAFETY) / widest;            // cabe no comprimento
+    const byThickness = (width - 8) / (n * LINE_HEIGHT);        // cabe na espessura
+    const size = Math.min(cap, byLength, byThickness);
+    // Só usa mais linhas se a letra ficar visivelmente maior.
+    if (!best || size > best.size + 0.5) best = { size, lines };
   }
-  return { fontSize: oneLine, lines: 1, author, authorLen, titleSpace };
+  return {
+    fontSize: Math.max(TITLE_MIN, best.size),
+    lines: best.lines,
+    author,
+    authorSize,
+    authorLen,
+    titleSpace,
+  };
 }
 
 // Cor da lombada: a escolhida à mão > a extraída da capa > pastel provisória.
@@ -112,13 +145,20 @@ function updateSpine(el, book) {
   el.style.setProperty("--larg", width + "px");   // então largura e altura trocam
   el.style.setProperty("--cor", bg);
   el.style.setProperty("--cor-texto", readableTextColor(bg));
-  const framed = el.dataset.estilo === "3";
-  const { fontSize, lines, author, authorLen, titleSpace } = fitText(book, width, height, framed);
+  const { fontSize, lines, author, authorSize, authorLen, titleSpace } = fitText(book, width, height);
   el.style.setProperty("--fs-titulo", fontSize + "px");
-  el.style.setProperty("--linhas", lines);
+  el.style.setProperty("--fs-autor", authorSize + "px");
   el.style.setProperty("--autor-len", authorLen + "px");
-  el.style.setProperty("--titulo-max", titleSpace + (framed ? 14 : 0) + "px");
-  el.querySelector(".lombada-titulo").textContent = book.title;
+  el.style.setProperty("--titulo-max", titleSpace + "px");
+  // Uma linha por elemento: as quebras foram calculadas no fitText.
+  const titleEl = el.querySelector(".lombada-titulo");
+  titleEl.replaceChildren(
+    ...lines.map((line) => {
+      const span = document.createElement("span");
+      span.textContent = line;
+      return span;
+    })
+  );
   el.querySelector(".lombada-autor").textContent = author;
   el.toggleAttribute("data-favorito", Boolean(book.favorite));
   // Foto da lombada: substitui a cor e o texto (a foto já tem o título).
