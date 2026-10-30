@@ -20,6 +20,10 @@ soltar, lista de desejos com link para a Amazon UK e backup em JSON.
 - Desktop primeiro, mas não usar soluções que impeçam a versão para celular
   (pointer events em vez de eventos de mouse, layouts que se redistribuem).
 - Um commit a cada funcionalidade que funcionar, testada no preview.
+- Testes no preview usam os dados reais do navegador: prefira estantes e
+  livros temporários criados para o teste. Se precisar mexer em algo dela
+  (ordens, arrumação), guarde antes uma cópia que sobreviva a recarregar a
+  página (ex.: `sessionStorage`) e restaure ao final.
 
 ## Tecnologia
 - HTML, CSS e JavaScript puros, com módulos ES (`<script type="module">`).
