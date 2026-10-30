@@ -54,6 +54,13 @@ soltar, lista de desejos com link para a Amazon UK e backup em JSON.
     o idioma no servidor — a lista comum `/editions.json` vem misturada e
     quase não traz edições em português. Capa, páginas e ISBN vêm da edição
     escolhida. `suggestCategories()` traduz assuntos para categorias em PT.
+    Velocidade: todo pedido passa por `getJson()` — respostas guardadas na
+    memória (repetir busca/edições é instantâneo) e, se a Open Library não
+    responder em 4 s, o mesmo pedido é feito de novo e vale o que chegar
+    primeiro. O cadastro pede a busca em duas versões ao mesmo tempo:
+    `quick: true` (sem a edição que bateu, ~1 s mais rápida) aparece
+    primeiro e a completa atualiza os mesmos itens. Passar o mouse/focar um
+    resultado já busca as edições (`prefetchEditions`).
 - `js/ui/` — estante, ordenação, FLIP, arrastar, página do livro, cadastro,
   lista de desejos, backup, diálogos.
   - `spine-color.js`: cor da lombada = cor dominante (baldes de cor, não
@@ -116,8 +123,9 @@ soltar, lista de desejos com link para a Amazon UK e backup em JSON.
     abre como a "estante" especial `#/estante/desejos` (`WISHLIST` e
     `wishlistBooks()` em shelf-defs.js). `wishlist.js` desenha os cartões
     (reaproveitados, para o campo de preço não perder o foco): capa, link
-    "Ver na Amazon UK" (`services/amazon.js`: ISBN ou título+autor, só um
-    link — nunca consultar a Amazon), preço visto (£) + data (hoje ao
+    "Ver na Amazon UK" (`services/amazon.js`: título+autor, só um link —
+    nunca consultar a Amazon; o ISBN da Open Library costuma ser de edição
+    que a Amazon UK não vende, e a busca por ele voltava vazia), preço visto (£) + data (hoje ao
     preencher o preço), "Comprei!" (pergunta Físico/Kindle com
     `chooseDialog`, a capa voa até "← Sala" e o livro vira "quero ler" na
     estante) e "remover" (com confirmação). No cadastro: "Guardar em:
@@ -185,8 +193,8 @@ soltar, lista de desejos com link para a Amazon UK e backup em JSON.
     novos criam a estante ao guardar.
     `isSearchable()` (openlibrary.js) evita buscar só com palavras comuns
     ("the" dá 422, "of the" dá 500 na Open Library).
-    ISBN e link da capa não aparecem para ela (o ISBN fica guardado para o
-    link da Amazon). Páginas só são digitáveis no cadastro manual.
+    ISBN e link da capa não aparecem para ela (o ISBN fica guardado no
+    livro). Páginas só são digitáveis no cadastro manual.
   - `category-picker.js`: chips reutilizáveis — categorias (cadastro e
     página do livro) e estantes (seção "Estantes" na página do livro, que
     também cria estantes novas).

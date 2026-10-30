@@ -92,7 +92,7 @@ export function createWishlist(container, { onOpen, onBought, onRemove, save }) 
     ].filter(Boolean).join(" · ");
     card.querySelector(".desejo-edicao").textContent = edition;
     card.querySelector(".desejo-amazon").href = amazonUrl(book);
-    card.querySelector(".desejo-amazon").title = book.isbn ? `Buscar pelo ISBN ${book.isbn}` : "Buscar por título e autor";
+    card.querySelector(".desejo-amazon").title = "Buscar por título e autor na amazon.co.uk";
     // Não sobrescreve um campo que ela está editando.
     for (const input of card.querySelectorAll("[data-campo]")) {
       if (document.activeElement !== input) input.value = book[input.dataset.campo] || "";

@@ -5,12 +5,12 @@
 // Também dá para pular a busca e cadastrar à mão.
 
 import * as db from "../data/db.js";
-import { searchBooks, isSearchable, getEditions, coverUrl, suggestCategories, LANGUAGES } from "../services/openlibrary.js";
+import { searchBooks, isSearchable, getEditions, prefetchEditions, coverUrl, suggestCategories, LANGUAGES } from "../services/openlibrary.js";
 import { createCategoryPicker } from "./category-picker.js";
 import { createStar } from "./favorite-star.js";
 import { setCoverImage } from "./cover-image.js";
 
-const SEARCH_DELAY = 450; // espera ela parar de digitar (ms)
+const SEARCH_DELAY = 350; // espera ela parar de digitar (ms)
 
 let dialog, steps, searchInput, statusEl, resultsEl;
 let editionStatusEl, editionListEl, tabsEl;
@@ -210,24 +210,71 @@ function showStep(name) {
 
 // ---------- Passo 1: busca ----------
 
+// Pede duas versões da busca ao mesmo tempo: a rápida aparece primeiro e a
+// completa (com o título da edição em português, se for o caso) atualiza os
+// mesmos itens quando chega, sem refazer a lista.
 async function runSearch(query) {
   searchController?.abort(); // cancela a busca anterior, se ainda estiver em andamento
   searchController = new AbortController();
+  const { signal } = searchController;
   statusEl.textContent = "Procurando nas prateleiras da Open Library…";
   resultsEl.replaceChildren();
-  try {
-    const results = await searchBooks(query, { signal: searchController.signal });
+
+  const show = (results) => {
+    if (signal.aborted) return;
     statusEl.textContent = results.length
       ? `${results.length} resultado${results.length > 1 ? "s" : ""}. Escolha o seu livro:`
       : "Nenhum livro encontrado. Tente outro título ou cadastre à mão.";
-    resultsEl.replaceChildren(...results.map(resultItem));
+    renderResults(results);
+  };
+  const full = searchBooks(query, { signal });
+  const quick = searchBooks(query, { signal, quick: true });
+  let fullArrived = false;
+  quick.then((results) => !fullArrived && show(results), () => {});
+  try {
+    const results = await full;
+    fullArrived = true;
+    show(results);
   } catch (err) {
     if (err.name === "AbortError") return;
+    // A completa falhou: se a rápida chegou, fica com ela.
+    const results = await quick.catch(() => null);
+    if (results) return show(results);
+    if (signal.aborted) return;
     console.error(err);
     statusEl.textContent = err.status
       ? "Não consegui buscar com esse texto. Tente escrever mais do título ou o nome do autor."
       : "Não consegui falar com a Open Library. Verifique a internet e tente de novo.";
   }
+}
+
+// Desenha os resultados reaproveitando os itens que já estão na tela (pela
+// obra): trocar a versão rápida pela completa só atualiza título e capa.
+function renderResults(results) {
+  const current = new Map([...resultsEl.children].map((li) => [li.dataset.obra, li]));
+  const items = results.map((result) => {
+    const html = resultHtml(result);
+    let li = current.get(result.workKey);
+    if (li && li.dataset.html === html) {
+      li.result = result;
+      return li;
+    }
+    const replaced = li;
+    li = listButton(html, () => chooseWork(li.result));
+    li.dataset.obra = result.workKey;
+    li.dataset.html = html;
+    li.result = result;
+    // Começa a buscar as edições assim que ela mira o livro.
+    const button = li.firstElementChild;
+    const prefetch = () => prefetchEditions(li.result.workKey);
+    button.addEventListener("pointerenter", prefetch, { once: true });
+    button.addEventListener("focus", prefetch, { once: true });
+    // Mantém o foco do teclado se o item estava focado.
+    if (replaced?.contains(document.activeElement)) queueMicrotask(() => button.focus());
+    return li;
+  });
+  const same = resultsEl.children.length === items.length && items.every((li, i) => resultsEl.children[i] === li);
+  if (!same) resultsEl.replaceChildren(...items);
 }
 
 // Miniatura da capa (carregada depois, com novas tentativas) ou a inicial.
@@ -238,14 +285,11 @@ function thumb(coverId, title) {
     : initial(title);
 }
 
-function resultItem(result) {
+function resultHtml(result) {
   const original = result.displayTitle !== result.title ? `<em class="original">${escapeHtml(result.title)}</em>` : "";
   const details = [result.author, result.year].filter(Boolean).join(" · ");
-  return listButton(
-    `${thumb(result.coverId, result.displayTitle)}
-     <span><strong>${escapeHtml(result.displayTitle)}</strong>${original}<small>${escapeHtml(details)}</small></span>`,
-    () => chooseWork(result)
-  );
+  return `${thumb(result.coverId, result.displayTitle)}
+     <span><strong>${escapeHtml(result.displayTitle)}</strong>${original}<small>${escapeHtml(details)}</small></span>`;
 }
 
 function listButton(html, onClick) {

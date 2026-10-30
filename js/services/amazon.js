@@ -4,9 +4,10 @@
 
 const BASE = "https://www.amazon.co.uk/s";
 
-// Com ISBN a busca acha a edição exata; sem ISBN, usa título + autor.
-// `i=stripbooks` limita a busca à seção de livros.
+// Busca por título + autor, na seção de livros (`i=stripbooks`).
+// Não usa o ISBN: o da Open Library costuma ser de uma edição americana ou
+// brasileira que a Amazon UK não vende, e aí a busca volta vazia.
 export function amazonUrl(book) {
-  const query = book.isbn || [book.title, book.author].filter(Boolean).join(" ");
+  const query = [book.title, book.author].filter(Boolean).join(" ");
   return `${BASE}?k=${encodeURIComponent(query)}&i=stripbooks`;
 }

@@ -4,11 +4,81 @@ const BASE = "https://openlibrary.org";
 // Na busca pedimos só os campos necessários. A lista completa de ISBNs pode
 // ter milhares de itens; em vez dela pegamos a edição que bateu com a busca
 // (se ela digitou em português, vem a edição em português).
-const FIELDS = [
+const QUICK_FIELDS = [
   "key", "title", "author_name", "cover_i", "number_of_pages_median",
   "first_publish_year", "subject",
-  "editions", "editions.title", "editions.language", "editions.cover_i",
-].join(",");
+];
+const FIELDS = [...QUICK_FIELDS, "editions", "editions.title", "editions.language", "editions.cover_i"];
+
+// ---------- Pedidos à Open Library (com memória e "segunda tentativa") ----------
+// A Open Library às vezes demora muito para responder um pedido que, repetido,
+// volta em 1–2 s. Então: se um pedido passar de HEDGE_AFTER sem resposta,
+// fazemos o mesmo pedido de novo e ficamos com o que chegar primeiro.
+// As respostas ficam guardadas na memória: repetir uma busca, voltar para os
+// resultados ou reabrir as edições de um livro é instantâneo.
+const HEDGE_AFTER = 4000; // ms
+const MAX_CACHE = 80;     // quantas respostas guardar
+const cache = new Map();  // url -> Promise com o JSON
+
+function requestJson(url) {
+  return new Promise((resolve, reject) => {
+    const controllers = [];
+    let running = 0;
+    let settled = false;
+    let hedge;
+    const finish = (fn, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(hedge);
+      controllers.forEach((c) => c.abort()); // cancela a tentativa que perdeu
+      fn(value);
+    };
+    const attempt = () => {
+      const controller = new AbortController();
+      controllers.push(controller);
+      running++;
+      fetch(url, { signal: controller.signal })
+        .then((res) => {
+          if (!res.ok) {
+            // O servidor recusou o pedido (não é falta de internet).
+            const err = new Error(`Open Library respondeu ${res.status}`);
+            err.status = res.status;
+            throw err;
+          }
+          return res.json();
+        })
+        .then((data) => finish(resolve, data), (err) => {
+          running--;
+          if (settled) return;
+          // Erro de rede ou do servidor (5xx): tenta mais uma vez.
+          const retry = controllers.length < 2 && !(err.status >= 400 && err.status < 500);
+          if (retry) attempt();
+          else if (!running) finish(reject, err);
+        });
+    };
+    attempt();
+    hedge = setTimeout(() => controllers.length < 2 && attempt(), HEDGE_AFTER);
+  });
+}
+
+// Mesmo pedido = mesma resposta (e o mesmo pedido em andamento é reaproveitado).
+// `signal` só cancela a espera de quem pediu: o pedido continua e fica guardado.
+function getJson(url, { signal } = {}) {
+  let promise = cache.get(url);
+  if (!promise) {
+    promise = requestJson(url);
+    cache.set(url, promise);
+    promise.catch(() => cache.delete(url)); // erro não fica guardado
+    if (cache.size > MAX_CACHE) cache.delete(cache.keys().next().value);
+  }
+  if (!signal) return promise;
+  return new Promise((resolve, reject) => {
+    const abort = () => reject(new DOMException("Cancelado", "AbortError"));
+    if (signal.aborted) return abort();
+    signal.addEventListener("abort", abort, { once: true });
+    promise.then(resolve, reject).finally(() => signal.removeEventListener("abort", abort));
+  });
+}
 
 // Idiomas oferecidos na escolha de edição (código da Open Library -> nome).
 export const LANGUAGES = { por: "Português", eng: "Inglês" };
@@ -59,17 +129,15 @@ export function isSearchable(query) {
 }
 
 // Busca livros pelo texto digitado (título ou autor, em português ou inglês).
+// `quick: true` pula a edição que bateu com a busca: responde bem mais rápido,
+// mas o título vem no idioma original (ex.: "The Book Thief" em vez de
+// "A menina que roubava livros"). O cadastro pede as duas versões juntas e
+// troca a rápida pela completa quando ela chega.
 // `signal` permite cancelar a busca se ela digitar outra coisa.
-export async function searchBooks(query, { signal } = {}) {
-  const url = `${BASE}/search.json?q=${encodeURIComponent(query)}&fields=${FIELDS}&limit=12`;
-  const res = await fetch(url, { signal });
-  if (!res.ok) {
-    // O servidor recusou a busca (não é falta de internet).
-    const err = new Error(`Open Library respondeu ${res.status}`);
-    err.status = res.status;
-    throw err;
-  }
-  const data = await res.json();
+export async function searchBooks(query, { signal, quick = false } = {}) {
+  const fields = (quick ? QUICK_FIELDS : FIELDS).join(",");
+  const url = `${BASE}/search.json?q=${encodeURIComponent(query)}&fields=${fields}&limit=12`;
+  const data = await getJson(url, { signal });
   return data.docs.map(toResult);
 }
 
@@ -85,9 +153,7 @@ export async function getEditions(workKey, lang, { signal } = {}) {
   // Campos que queremos de volta (a Query API pede assim: nome=vazio).
   ["key", "title", "number_of_pages", "covers", "isbn_13", "isbn_10", "publishers", "publish_date"]
     .forEach((f) => params.append(f, ""));
-  const res = await fetch(`${BASE}/query.json?${params}`, { signal });
-  if (!res.ok) throw new Error(`Open Library respondeu ${res.status}`);
-  const list = await res.json();
+  const list = await getJson(`${BASE}/query.json?${params}`, { signal });
 
   const editions = list.map((e) => ({
     key: e.key,
@@ -106,6 +172,12 @@ export async function getEditions(workKey, lang, { signal } = {}) {
   // Primeiro as mais completas (capa, páginas, ISBN), depois as mais novas.
   const score = (e) => (e.coverId ? 2 : 0) + (e.pages ? 2 : 0) + (e.isbn ? 1 : 0);
   return shown.sort((a, b) => score(b) - score(a) || (b.year || 0) - (a.year || 0));
+}
+
+// Começa a buscar as edições antes do clique (ao passar o mouse ou focar um
+// resultado). Quando ela clicar, a resposta já está chegando ou guardada.
+export function prefetchEditions(workKey) {
+  for (const lang of Object.keys(LANGUAGES)) getEditions(workKey, lang).catch(() => {});
 }
 
 // ---------- Categorias sugeridas ----------
