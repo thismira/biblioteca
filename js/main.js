@@ -6,6 +6,7 @@ import { sortBooks } from "./ui/sort.js";
 import { openAddBook } from "./ui/add-book.js";
 import { flyStar } from "./ui/favorite-star.js";
 import { openBookDetail, closeBookDetail, isBookDetailOpen } from "./ui/book-detail.js";
+import { flyIntoShelf, reducedMotion } from "./ui/fly-book.js";
 import { queueSpineColor, SPINE_COLOR_VERSION } from "./services/spine-color.js";
 
 await db.init();
@@ -92,11 +93,31 @@ document.getElementById("btn-adicionar").addEventListener("click", openAddBook);
 window.addEventListener("hashchange", route);
 route();
 
-// Livro marcado como favorito: a estrelinha voa até ele na prateleira de favoritos.
-document.addEventListener("livro:favoritado", ({ detail }) => {
-  const spine = favoritesShelf.elements.get(detail.id);
-  if (!spine) return;
-  favoritesSection.scrollIntoView({ behavior: "smooth", block: "center" });
-  // Espera a rolagem terminar antes de lançar a estrela.
-  setTimeout(() => flyStar(detail.fromRect, spine), 450);
+// Espera a rolagem suave terminar (com tempo máximo, se o navegador não avisar).
+function scrollToCenter(el) {
+  return new Promise((resolve) => {
+    const finish = () => setTimeout(resolve, 60);
+    const timer = setTimeout(finish, 900);
+    window.addEventListener("scrollend", () => { clearTimeout(timer); finish(); }, { once: true });
+    el.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "center" });
+  });
+}
+
+// Livro novo: a capa voa da janela de cadastro até o lugar dele na estante e
+// vira lombada. Se for favorito, depois a estrelinha voa até os favoritos.
+document.addEventListener("livro:adicionado", async ({ detail }) => {
+  const book = db.getBook(detail.id);
+  const spine = shelf.elements.get(detail.id);
+  if (!book || !spine) return;
+  spine.style.visibility = "hidden"; // escondida até o livro "chegar"
+  await scrollToCenter(spine);
+  if (reducedMotion()) spine.style.visibility = "";
+  else await flyIntoShelf(detail.coverRect, book, spine);
+
+  const favoriteSpine = detail.favorite && favoritesShelf.elements.get(detail.id);
+  if (favoriteSpine) {
+    const from = spine.getBoundingClientRect();
+    await scrollToCenter(favoritesSection);
+    flyStar(spine.isConnected ? spine.getBoundingClientRect() : from, favoriteSpine);
+  }
 });

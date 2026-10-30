@@ -5,7 +5,7 @@
 // Também dá para pular a busca e cadastrar à mão.
 
 import * as db from "../data/db.js";
-import { searchBooks, getEditions, coverUrl, suggestCategories, LANGUAGES } from "../services/openlibrary.js";
+import { searchBooks, isSearchable, getEditions, coverUrl, suggestCategories, LANGUAGES } from "../services/openlibrary.js";
 import { createCategoryPicker } from "./category-picker.js";
 import { createStar } from "./favorite-star.js";
 
@@ -18,6 +18,7 @@ let searchTimer, searchController, editionController;
 
 // O livro que está sendo cadastrado (preenchido pela busca ou à mão).
 let draft = null;
+let rating = 0; // nota escolhida no cadastro (quando o status é "Lido")
 // Edições já carregadas: { por: [...], eng: [...] } e a aba atual.
 let editions = {};
 let currentLang = "por";
@@ -105,6 +106,18 @@ function build() {
               <input id="cad-pagina-atual" name="currentPage" type="number" min="0" inputmode="numeric">
               <small class="dica-pagina"></small>
             </div>
+            <div class="linha-campos campos-lido" hidden>
+              <div class="campo">
+                <span class="rotulo">Sua nota</span>
+                <div class="nota-estrelas" role="radiogroup" aria-label="Nota de 1 a 5">
+                  ${[1, 2, 3, 4, 5].map((n) => `<button type="button" role="radio" data-nota="${n}" aria-label="${n} estrela${n > 1 ? "s" : ""}">★</button>`).join("")}
+                </div>
+              </div>
+              <div class="campo">
+                <label for="cad-fim">Terminei em</label>
+                <input id="cad-fim" name="endDate" type="date">
+              </div>
+            </div>
           </div>
         </div>
         <div class="campo">
@@ -136,13 +149,15 @@ function build() {
   searchInput.addEventListener("input", () => {
     clearTimeout(searchTimer);
     const q = searchInput.value.trim();
-    if (q.length >= 3) searchTimer = setTimeout(() => runSearch(q), SEARCH_DELAY);
+    if (isSearchable(q)) searchTimer = setTimeout(() => runSearch(q), SEARCH_DELAY);
+    else if (q) statusEl.textContent = "Continue digitando…";
   });
   steps.busca.querySelector(".busca").addEventListener("submit", (event) => {
     event.preventDefault();
     clearTimeout(searchTimer);
     const q = searchInput.value.trim();
-    if (q) runSearch(q);
+    if (isSearchable(q)) runSearch(q);
+    else if (q) statusEl.textContent = "Digite um pouco mais do título ou do nome do autor.";
   });
   on("manual", () => showReview({ manual: true, title: searchInput.value.trim() }));
   on("fechar", () => dialog.close());
@@ -157,8 +172,9 @@ function build() {
 
   // Passo 3
   on("voltar-revisar", () => showStep(draft.manual ? "busca" : "edicao"));
-  form.status.addEventListener("change", updateCurrentPageField);
-  form.pages.addEventListener("input", updateCurrentPageField);
+  form.status.addEventListener("change", updateStatusFields);
+  form.pages.addEventListener("input", updateStatusFields);
+  setupRating();
   form.addEventListener("submit", save);
   coverImg.addEventListener("error", () => setCover(""));
 
@@ -193,7 +209,9 @@ async function runSearch(query) {
   } catch (err) {
     if (err.name === "AbortError") return;
     console.error(err);
-    statusEl.textContent = "Não consegui falar com a Open Library. Verifique a internet e tente de novo.";
+    statusEl.textContent = err.status
+      ? "Não consegui buscar com esse texto. Tente escrever mais do título ou o nome do autor."
+      : "Não consegui falar com a Open Library. Verifique a internet e tente de novo.";
   }
 }
 
@@ -352,7 +370,9 @@ function showReview(data) {
     suggestions: draft.suggestions, // se ela remover uma sugestão, ela continua disponível com "+"
     known: db.getAllCategories(),
   });
-  updateCurrentPageField();
+  rating = 0;
+  paintRating(0);
+  updateStatusFields();
   showStep("revisar");
   form.elements.title.focus();
 }
@@ -371,14 +391,36 @@ function totalPages() {
   return draft.manual ? Number(form.pages.value) || null : draft.pages;
 }
 
-// Mostra "Em que página você está?" só quando o status é "Lendo".
-function updateCurrentPageField() {
-  const reading = form.status.value === "lendo";
-  const field = form.querySelector(".campo-pagina-atual");
-  field.hidden = !reading;
+// "Lendo" pergunta a página atual; "Lido" pede a nota e a data de término.
+function updateStatusFields() {
+  const status = form.status.value;
+  form.querySelector(".campo-pagina-atual").hidden = status !== "lendo";
+  form.querySelector(".campos-lido").hidden = status !== "lido";
+  if (status === "lido" && !form.endDate.value) form.endDate.value = today();
   const total = totalPages();
   form.currentPage.max = total || "";
   form.querySelector(".dica-pagina").textContent = total ? `de ${total} páginas` : "";
+}
+
+// Estrelas da nota: passar o mouse mostra a prévia; clicar de novo apaga.
+function setupRating() {
+  const stars = [...form.querySelectorAll("[data-nota]")];
+  stars.forEach((s) => {
+    s.addEventListener("mouseenter", () => paintRating(Number(s.dataset.nota)));
+    s.addEventListener("click", () => {
+      const n = Number(s.dataset.nota);
+      rating = rating === n ? 0 : n;
+      paintRating(rating);
+    });
+  });
+  form.querySelector(".nota-estrelas").addEventListener("mouseleave", () => paintRating(rating));
+}
+
+function paintRating(n) {
+  form.querySelectorAll("[data-nota]").forEach((s) => {
+    s.classList.toggle("acesa", Number(s.dataset.nota) <= n);
+    s.setAttribute("aria-checked", String(Number(s.dataset.nota) === n));
+  });
 }
 
 function setCover(url) {
@@ -397,7 +439,12 @@ async function save(event) {
 
   let currentPage = 0;
   if (status === "lendo") currentPage = Math.min(Number(form.currentPage.value) || 0, pages || Infinity);
-  if (status === "lido") currentPage = pages || 0;
+  if (status === "lido") currentPage = pages || 0; // lido = progresso 100%
+  // Histórico de leitura: "Lendo" registra a página atual; "Lido", a última.
+  const now = new Date().toISOString();
+  let progressLog = [];
+  if (status === "lendo") progressLog = [{ date: now, page: currentPage }];
+  if (status === "lido" && pages) progressLog = [{ date: now, page: pages }];
 
   const book = await db.addBook({
     title: form.elements.title.value.trim(),
@@ -409,19 +456,23 @@ async function save(event) {
     status,
     format: form.format.value,
     currentPage,
-    progressLog: status === "lendo" ? [{ date: new Date().toISOString(), page: currentPage }] : [],
+    progressLog,
     startDate: status === "lendo" ? today() : "",
+    endDate: status === "lido" ? form.endDate.value || today() : "",
+    rating: status === "lido" ? rating : 0,
     favorite,
     categories,
   });
   await db.ensureCategories(categories);
 
+  const coverRect = form.querySelector(".capa-previa").getBoundingClientRect();
   const starRect = star.element.getBoundingClientRect();
   dialog.close();
-  // Avisa a estante para fazer a estrelinha voar até a prateleira de favoritos.
-  if (favorite) {
-    document.dispatchEvent(new CustomEvent("livro:favoritado", { detail: { id: book.id, fromRect: starRect } }));
-  }
+  // Avisa a estante: o livro voa até o lugar dele e, se for favorito,
+  // a estrelinha voa até a prateleira de favoritos.
+  document.dispatchEvent(
+    new CustomEvent("livro:adicionado", { detail: { id: book.id, coverRect, favorite, starRect } })
+  );
 }
 
 function escapeHtml(text) {

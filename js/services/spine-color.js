@@ -50,12 +50,15 @@ function findBookEdge(at, width, height, backdrop) {
   return 0;
 }
 
+const LOAD_TIMEOUT = 15000; // capa que demora mais que isso conta como falha
+
 function loadImage(url) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "anonymous"; // pede permissão para ler os pixels
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error("capa não carregou"));
+    const timer = setTimeout(() => reject(new Error("capa demorou demais")), LOAD_TIMEOUT);
+    img.onload = () => { clearTimeout(timer); resolve(img); };
+    img.onerror = () => { clearTimeout(timer); reject(new Error("capa não carregou")); };
     img.src = url;
   });
 }
@@ -119,24 +122,38 @@ export async function extractSpineColor(url) {
 }
 
 // Fila: extrai uma capa por vez, para não carregar dezenas de imagens juntas.
+// O servidor de capas às vezes falha por alguns segundos: se não der certo,
+// a capa volta para a fila mais tarde (sem travar as outras), tentando
+// também a versão média da capa, que fica em outro endereço.
+const RETRY_DELAYS = [3000, 8000]; // espera antes da 2ª e da 3ª tentativa
 const queue = [];
-const tried = new Set(); // capas que já tentamos nesta sessão
+const tried = new Set(); // capas que já entraram na fila nesta sessão
 let running = false;
+
+// Na 2ª tentativa usa a capa média (-M) em vez da grande (-L).
+const variant = (url, attempt) => (attempt === 1 ? url.replace("-L.jpg", "-M.jpg") : url);
 
 // `onColor(color)` é chamada quando a cor fica pronta.
 export function queueSpineColor(url, onColor) {
   if (!url || tried.has(url)) return;
   tried.add(url);
-  queue.push({ url, onColor });
+  enqueue({ url, onColor, attempt: 0 });
+}
+
+function enqueue(job) {
+  queue.push(job);
   if (!running) runQueue();
 }
 
 async function runQueue() {
   running = true;
   while (queue.length) {
-    const { url, onColor } = queue.shift();
-    const color = await extractSpineColor(url);
-    if (color) await onColor(color);
+    const job = queue.shift();
+    const color = await extractSpineColor(variant(job.url, job.attempt));
+    if (color) await job.onColor(color);
+    else if (job.attempt < RETRY_DELAYS.length) {
+      setTimeout(() => enqueue({ ...job, attempt: job.attempt + 1 }), RETRY_DELAYS[job.attempt]);
+    }
   }
   running = false;
 }

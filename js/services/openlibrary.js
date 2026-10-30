@@ -45,12 +45,30 @@ function toResult(doc) {
   };
 }
 
+// Palavras tão comuns que a Open Library recusa buscar só com elas
+// (ex.: "the" dá erro 422 e "of the" dá erro 500).
+const COMMON_WORDS = new Set([
+  "a", "o", "as", "os", "um", "uma", "e", "de", "da", "do", "das", "dos", "em", "no", "na", "que",
+  "the", "of", "an", "and", "in", "on", "to", "for", "with", "is", "at", "by",
+]);
+
+// Vale a pena buscar? Precisa de 3+ letras e de alguma palavra não tão comum.
+export function isSearchable(query) {
+  const words = query.toLowerCase().match(/[\p{L}\p{N}]+/gu) || [];
+  return words.join("").length >= 3 && words.some((w) => !COMMON_WORDS.has(w));
+}
+
 // Busca livros pelo texto digitado (título ou autor, em português ou inglês).
 // `signal` permite cancelar a busca se ela digitar outra coisa.
 export async function searchBooks(query, { signal } = {}) {
   const url = `${BASE}/search.json?q=${encodeURIComponent(query)}&fields=${FIELDS}&limit=12`;
   const res = await fetch(url, { signal });
-  if (!res.ok) throw new Error(`Open Library respondeu ${res.status}`);
+  if (!res.ok) {
+    // O servidor recusou a busca (não é falta de internet).
+    const err = new Error(`Open Library respondeu ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
   const data = await res.json();
   return data.docs.map(toResult);
 }

@@ -9,6 +9,7 @@ import { confirmDialog, alertDialog } from "./dialogs.js";
 import { pickSpinePhoto } from "./spine-photo.js";
 import { spineColor } from "./shelf.js";
 import { readableTextColor } from "../utils/color.js";
+import { PERSPECTIVE as P, px, lerp, done, reducedMotion, spineFace } from "./fly-book.js";
 
 const STATUSES = [["quero ler", "Quero ler"], ["lendo", "Lendo"], ["lido", "Lido"]];
 const HISTORY_SIZE = 6; // quantas atualizações de página aparecem no histórico
@@ -22,7 +23,6 @@ let busy = false;      // evita abrir/fechar duas vezes durante uma animação
 let closeRequested = false; // pediram para fechar enquanto a página abria
 let reviewTimer;
 
-const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const today = () => new Date().toISOString().slice(0, 10);
 const book = () => db.getBook(bookId);
 const $ = (selector) => dialog.querySelector(selector);
@@ -249,11 +249,14 @@ function renderAll() {
   renderSpineOptions();
 }
 
-function renderCover(b) {
+function renderCover(b, { failed = false } = {}) {
   const box = $(".detalhe-capa");
-  if (b.coverUrl) {
+  if (b.coverUrl && !failed) {
     box.innerHTML = `<img alt="Capa de ${escapeHtml(b.title)}">`;
-    box.querySelector("img").src = b.coverUrl;
+    const img = box.querySelector("img");
+    // Se o servidor de capas falhar, mostra a capa gerada em vez de um vazio.
+    img.addEventListener("error", () => renderCover(b, { failed: true }), { once: true });
+    img.src = b.coverUrl;
     box.style.removeProperty("--cor");
   } else {
     // Sem capa: um "livro" na cor da lombada com o título.
@@ -447,25 +450,6 @@ async function removeBook() {
 // O livro sai da prateleira, gira (a lombada fica de perfil) e do outro lado
 // aparece a capa, que pousa no lugar dela. Para fechar, o caminho inverso.
 
-const px = (r) => ({ left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px" });
-const lerp = (a, b, t) => ({
-  left: a.left + (b.left - a.left) * t,
-  top: a.top + (b.top - a.top) * t,
-  width: a.width + (b.width - a.width) * t,
-  height: a.height + (b.height - a.height) * t,
-});
-const P = "perspective(900px)";
-
-// Espera uma animação terminar, mas com tempo máximo: se o navegador não
-// estiver desenhando (ex.: aba em segundo plano), a página não fica travada.
-function done(animation) {
-  const timing = animation.effect.getComputedTiming();
-  const limit = (timing.endTime || 0) + 150;
-  return Promise.race([
-    animation.finished.catch(() => {}),
-    new Promise((resolve) => setTimeout(resolve, limit)),
-  ]);
-}
 const LIFT = 26;
 
 function visibleRect(el) {
@@ -481,14 +465,6 @@ function makeFlier(rect, content) {
   flier.appendChild(content);
   dialog.appendChild(flier);
   return flier;
-}
-
-function spineFace(spine) {
-  const face = spine.cloneNode(true);
-  face.removeAttribute("data-id");
-  face.classList.add("face");
-  face.tabIndex = -1;
-  return face;
 }
 
 function coverFace() {

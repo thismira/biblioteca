@@ -50,7 +50,9 @@ em JSON.
   - `spine-color.js`: cor da lombada = cor dominante (baldes de cor, não
     média) da faixa esquerda da capa (2%–8% da largura). Se a "capa" for
     foto do livro sobre fundo claro (cantos claros e iguais), acha a borda
-    do livro e ignora o fundo. Fila de uma capa por vez. Ao mudar a regra,
+    do livro e ignora o fundo. Fila de uma capa por vez. O servidor de capas
+    falha às vezes (e a resposta de erro vem sem CORS): a capa volta para a
+    fila após 3 s (tentando a versão `-M`) e após 8 s; carga > 15 s = falha. Ao mudar a regra,
     aumente `SPINE_COLOR_VERSION`: `spineColorSource` ("v<n>:<capa>")
     faz as cores antigas serem refeitas. A cor escolhida à mão fica em
     `spineColorCustom` e tem prioridade (`spineColor()` em `shelf.js`).
@@ -65,7 +67,15 @@ em JSON.
     altura em JPEG (~10–20 KB, data URL em `spinePhoto`).
   - `dialogs.js`: `confirmDialog()` e `alertDialog()` no visual do site.
     Use sempre `confirmDialog({ danger: true })` antes de apagar dados.
+  - `fly-book.js`: ferramentas da animação de "livro voando" (`done()`
+    com tempo máximo, `px`, `lerp`, faces de capa/lombada) e
+    `flyIntoShelf()`: livro novo voa da janela de cadastro até a estante e
+    vira lombada (evento `livro:adicionado`, tratado em `main.js`; se for
+    favorito, depois a estrelinha voa até os favoritos).
   - `add-book.js`: cadastro em 3 passos (buscar → edição → revisar).
+    Status "Lido" mostra nota e "Terminei em" (hoje) e salva progresso 100%.
+    `isSearchable()` (openlibrary.js) evita buscar só com palavras comuns
+    ("the" dá 422, "of the" dá 500 na Open Library).
     ISBN e link da capa não aparecem para ela (o ISBN fica guardado para o
     link da Amazon). Páginas só são digitáveis no cadastro manual.
   - `category-picker.js`: chips de categoria reutilizável (cadastro e
