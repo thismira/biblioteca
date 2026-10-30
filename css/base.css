@@ -1,0 +1,195 @@
+/* ==========================================================
+   Identidade visual: cores, fontes e componentes reutilizáveis
+   ========================================================== */
+
+:root {
+  /* Paleta base */
+  --rosa-nevoa: #FDF1F1;   /* fundo da página */
+  --rosa-po: #F5DADF;      /* painéis e cartões */
+  --rosa-doce: #FFD1DC;    /* destaques suaves */
+
+  /* Complementos para contraste */
+  --texto: #4A2C35;        /* vinho-ameixa, ~11:1 sobre o fundo */
+  --texto-suave: #7A5560;
+  --acento: #9E4A65;       /* botões e links */
+  --acento-escuro: #833A53;
+  --creme: #FFFAF8;
+  --linha: #E8C3CB;
+
+  /* Estante pintada */
+  --estante: #F3DDE0;
+  --estante-sombra: #D9B3BA;
+  --estante-fundo: #EFD3D8;
+
+  /* Fontes */
+  --fonte-titulo: "Cormorant Garamond", Georgia, serif;
+  --fonte-texto: "Nunito Sans", system-ui, sans-serif;
+
+  --raio: 12px;
+  --sombra-suave: 0 6px 24px rgba(74, 44, 53, 0.10);
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; }
+
+body {
+  background: var(--rosa-nevoa);
+  color: var(--texto);
+  font-family: var(--fonte-texto);
+  font-size: 16px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+h1, h2, h3 {
+  font-family: var(--fonte-titulo);
+  font-weight: 600;
+  line-height: 1.15;
+  margin: 0;
+}
+
+a { color: var(--acento); }
+
+/* ---------- Cabeçalho ---------- */
+.topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  padding: 20px clamp(16px, 4vw, 48px);
+}
+
+.topo h1 {
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  margin-right: auto;
+}
+
+.topo h1 small {
+  display: block;
+  font-family: var(--fonte-texto);
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--texto-suave);
+  letter-spacing: 0.04em;
+}
+
+.topo nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+/* ---------- Botões ---------- */
+.botao {
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.95rem;
+  border: none;
+  border-radius: 999px;
+  padding: 10px 20px;
+  cursor: pointer;
+  background: var(--acento);
+  color: #fff;
+  transition: background 0.2s, transform 0.2s;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.botao:hover { background: var(--acento-escuro); }
+.botao:active { transform: scale(0.97); }
+
+.botao.secundario {
+  background: var(--creme);
+  color: var(--texto);
+  box-shadow: inset 0 0 0 1.5px var(--linha);
+}
+.botao.secundario:hover { background: var(--rosa-doce); }
+
+.botao.perigo { background: #A33A3A; }
+.botao.perigo:hover { background: #872E2E; }
+
+.botao:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--acento);
+  outline-offset: 2px;
+}
+
+/* ---------- Campos ---------- */
+label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--texto-suave);
+  margin-bottom: 4px;
+}
+
+input, select, textarea {
+  font: inherit;
+  color: var(--texto);
+  background: var(--creme);
+  border: 1.5px solid var(--linha);
+  border-radius: 10px;
+  padding: 9px 12px;
+  width: 100%;
+}
+
+textarea { resize: vertical; min-height: 90px; }
+
+.campo { margin-bottom: 14px; }
+
+.linha-campos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0 14px;
+}
+
+/* ---------- Janelas (dialog) ---------- */
+dialog {
+  border: none;
+  border-radius: 18px;
+  padding: 0;
+  background: var(--rosa-nevoa);
+  color: var(--texto);
+  box-shadow: 0 20px 60px rgba(74, 44, 53, 0.25);
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+}
+dialog::backdrop {
+  background: rgba(74, 44, 53, 0.35);
+  backdrop-filter: blur(3px);
+}
+
+.janela {
+  padding: 24px;
+}
+.janela h2 {
+  font-size: 1.8rem;
+  margin-bottom: 16px;
+}
+.janela .acoes {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.vazio {
+  text-align: center;
+  color: var(--texto-suave);
+  font-family: var(--fonte-titulo);
+  font-style: italic;
+  font-size: 1.3rem;
+  padding: 24px 16px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
