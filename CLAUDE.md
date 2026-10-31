@@ -129,7 +129,9 @@ soltar, lista de desejos com link para a Amazon UK e backup em JSON.
     abre como a "estante" especial `#/estante/desejos` (`WISHLIST` e
     `wishlistBooks()` em shelf-defs.js). `wishlist.js` desenha os cartões
     (reaproveitados, para o campo de preço não perder o foco): capa, link
-    "Ver na Amazon UK" (`services/amazon.js`: título+autor, só um link —
+    "Ver na Amazon UK" + "não abriu? procurar pelo Google" (busca
+    `site:amazon.co.uk`, plano B quando a Amazon responde "We're sorry")
+    (`services/amazon.js`: título+autor, só um link —
     nunca consultar a Amazon; o ISBN da Open Library costuma ser de edição
     que a Amazon UK não vende, e a busca por ele voltava vazia), preço visto (£) + data (hoje ao
     preencher o preço), "Comprei!" (pergunta Físico/Kindle com
@@ -253,6 +255,15 @@ soltar, lista de desejos com link para a Amazon UK e backup em JSON.
 - Fontes: Cormorant Garamond (títulos, lombadas, quotes) + Nunito Sans
   (interface).
 - Cores definidas como variáveis em `:root` (`css/base.css` e `css/shelf.css`).
+
+## Publicação
+GitHub Pages, servindo a raiz da branch `main` (passo a passo no README, via
+GitHub Desktop). Todos os caminhos são relativos (`css/…`, `js/…`, `img/…`)
+para funcionar em `usuario.github.io/<repositório>/` — nunca usar caminhos
+começando com `/`. `.nojekyll` desliga o processamento do GitHub. Ícone:
+`img/icone.svg` (aba) e `img/icone-180.png` (tela inicial do iPhone, sem
+cantos transparentes); `site.webmanifest` para "Adicionar à tela inicial".
+Dados de leitura nunca entram no repositório (ficam no navegador).
 
 ## Preview local
 O macOS impede o servidor iniciado pelo preview de ler a pasta Documentos.

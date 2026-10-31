@@ -1,0 +1,13 @@
+{
+  "name": "M’s Library",
+  "short_name": "M’s Library",
+  "description": "Uma biblioteca virtual para cada história.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#FDF1F1",
+  "theme_color": "#F5DADF",
+  "icons": [
+    { "src": "img/icone.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "img/icone-180.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}

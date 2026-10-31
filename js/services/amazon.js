@@ -11,3 +11,11 @@ export function amazonUrl(book) {
   const query = [book.title, book.author].filter(Boolean).join(" ");
   return `${BASE}?k=${encodeURIComponent(query)}&i=stripbooks`;
 }
+
+// Plano B: a Amazon às vezes recusa quem chega direto numa busca ("We're
+// sorry"). A mesma busca pelo Google, só dentro da amazon.co.uk, leva à
+// página do livro, que costuma abrir normalmente.
+export function amazonViaGoogleUrl(book) {
+  const query = ["site:amazon.co.uk", book.title, book.author].filter(Boolean).join(" ");
+  return `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+}

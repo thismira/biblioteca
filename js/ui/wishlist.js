@@ -4,7 +4,7 @@
 // Os cartões são reaproveitados entre um desenho e outro (como as lombadas):
 // assim, ao digitar o preço, o campo não perde o foco quando a tela atualiza.
 
-import { amazonUrl } from "../services/amazon.js";
+import { amazonUrl, amazonViaGoogleUrl } from "../services/amazon.js";
 import { LANGUAGES } from "../services/openlibrary.js";
 import { setCoverImage } from "./cover-image.js";
 import { spineColor } from "./shelf.js";
@@ -45,7 +45,10 @@ export function createWishlist(container, { onOpen, onBought, onRemove, save }) 
         <h3></h3>
         <p class="desejo-autor"></p>
         <p class="desejo-edicao"></p>
-        <a class="botao secundario desejo-amazon" target="_blank" rel="noopener noreferrer">Ver na Amazon UK ↗</a>
+        <div class="desejo-links">
+          <a class="botao secundario desejo-amazon" target="_blank" rel="noopener noreferrer">Ver na Amazon UK ↗</a>
+          <a class="desejo-google" target="_blank" rel="noopener noreferrer">não abriu? procurar pelo Google</a>
+        </div>
         <div class="desejo-preco">
           <label>Preço que vi
             <span class="desejo-moeda"><span>£</span><input type="text" inputmode="decimal" placeholder="0.00" data-campo="wishPrice" autocomplete="off"></span>
@@ -93,6 +96,7 @@ export function createWishlist(container, { onOpen, onBought, onRemove, save }) 
     card.querySelector(".desejo-edicao").textContent = edition;
     card.querySelector(".desejo-amazon").href = amazonUrl(book);
     card.querySelector(".desejo-amazon").title = "Buscar por título e autor na amazon.co.uk";
+    card.querySelector(".desejo-google").href = amazonViaGoogleUrl(book);
     // Não sobrescreve um campo que ela está editando.
     for (const input of card.querySelectorAll("[data-campo]")) {
       if (document.activeElement !== input) input.value = book[input.dataset.campo] || "";

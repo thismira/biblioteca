@@ -72,12 +72,21 @@ export function createRoom(container, { onOpen, onCreate }) {
   function miniCover(book) {
     const el = document.createElement("span");
     el.className = "mini-capa";
-    el.style.backgroundColor = spineColor(book);
+    const color = spineColor(book);
+    el.style.backgroundColor = color;
+    // Sem capa (ou se ela não carregar): o título escrito na capinha.
+    const titled = () => {
+      el.style.color = readableTextColor(color);
+      el.innerHTML = `<span class="mini-capa-titulo"></span>`;
+      el.firstChild.textContent = book.title;
+    };
     if (book.coverUrl) {
       const img = document.createElement("img");
       img.alt = "";
-      setCoverImage(img, book.coverUrl, { onFail: () => img.remove() });
+      setCoverImage(img, book.coverUrl, { onFail: titled });
       el.appendChild(img);
+    } else {
+      titled();
     }
     return el;
   }

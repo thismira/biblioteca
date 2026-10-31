@@ -118,6 +118,17 @@
 }
 .desejo-edicao:empty { display: none; }
 
+.desejo-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+.desejo-google {
+  font-size: 0.8rem;
+  color: var(--texto-suave);
+}
+.desejo-google:hover { color: var(--acento); }
 .desejo-amazon {
   font-size: 0.85rem;
   padding: 7px 14px;
