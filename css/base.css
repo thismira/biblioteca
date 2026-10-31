@@ -78,14 +78,6 @@ a { color: var(--acento); }
   color: var(--acento);
 }
 
-.subtitulo {
-  margin: 0;
-  font-family: var(--fonte-titulo);
-  font-style: italic;
-  font-size: 1.2rem;
-  color: var(--texto-suave);
-}
-
 /* Barra de ações acima da estante */
 .barra {
   display: flex;
