@@ -18,12 +18,21 @@ import { openAddBook } from "./ui/add-book.js";
 import { openBackup } from "./ui/backup.js";
 import { openBookDetail, closeBookDetail, isBookDetailOpen } from "./ui/book-detail.js";
 import { flyIntoShelf, flyIntoCard, reducedMotion, done } from "./ui/fly-book.js";
-import { confirmDialog, promptDialog, chooseDialog } from "./ui/dialogs.js";
+import { confirmDialog, promptDialog, chooseDialog, alertDialog, toast } from "./ui/dialogs.js";
+import { ensureLogin } from "./ui/login.js";
 import { pickShelfBooks } from "./ui/shelf-books-picker.js";
 import { createSearch } from "./ui/search.js";
 import { enableDragAndDrop } from "./ui/drag.js";
 import { queueSpineColor, SPINE_COLOR_VERSION } from "./services/spine-color.js";
 
+// Gravação que falhou (ex.: sem internet): avisa sem travar a tela.
+window.addEventListener("unhandledrejection", (event) => {
+  const message = event.reason?.message;
+  if (message && /salv|conex|conta/i.test(message)) toast(message);
+});
+
+// Os livros ficam na nuvem: primeiro o login, depois carrega a biblioteca.
+await ensureLogin();
 await db.init();
 
 const $ = (id) => document.getElementById(id);
@@ -466,6 +475,32 @@ db.subscribe(refresh);
 refresh();
 window.addEventListener("hashchange", route);
 route();
+offerLocalUpload();
+
+// Primeira vez na nuvem: se a conta está vazia e este navegador tem a
+// biblioteca antiga (de antes do login), oferece enviá-la.
+async function offerLocalUpload() {
+  if (db.getBooks().length) return;
+  const local = await db.readLocalLibrary();
+  if (!local.books.length) return;
+  const ok = await confirmDialog({
+    title: "Levar a biblioteca para a nuvem?",
+    message:
+      `Este navegador tem ${plural(local.books.length)} guardados de antes do login. ` +
+      "Quer enviar para a sua conta? Depois disso eles aparecem em qualquer aparelho em que você entrar.",
+    confirmText: "Enviar para a nuvem",
+    cancelText: "Agora não",
+  });
+  if (!ok) return;
+  try {
+    toast("Enviando os livros…");
+    await db.importAll({ books: local.books, settings: local.settings || {} });
+    toast(`Pronto! ${plural(local.books.length)} na nuvem ✓`);
+  } catch (err) {
+    console.error(err);
+    alertDialog({ title: "Não deu certo", message: `${err.message} Os livros continuam guardados neste navegador; tente de novo recarregando a página.` });
+  }
+}
 
 // ---------- Livro novo chegando ----------
 

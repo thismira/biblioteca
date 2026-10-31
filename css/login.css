@@ -1,0 +1,81 @@
+/* ==========================================================
+   Tela de login e aviso no pé da tela
+   ========================================================== */
+
+/* Enquanto ninguém entrou, só a tela de login aparece. */
+body.sem-login > :not(.tela-login):not(dialog) { display: none !important; }
+
+.tela-login {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+}
+.login-cartao {
+  width: min(380px, 100%);
+  padding: 32px 26px 24px;
+  border-radius: 22px;
+  background: var(--rosa-nevoa);
+  box-shadow: 0 20px 60px rgba(74, 44, 53, 0.18), inset 0 0 0 1px var(--linha);
+  text-align: center;
+}
+.login-cartao h1 {
+  font-size: 2.6rem;
+  margin-bottom: 4px;
+}
+.login-sub {
+  margin: 0 0 22px;
+  font-family: var(--fonte-titulo);
+  font-style: italic;
+  font-size: 1.15rem;
+  color: var(--texto-suave);
+}
+.login-cartao .campo { text-align: left; }
+.login-cartao .botao[type="submit"] {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-top: 4px;
+  padding: 12px;
+  text-align: center;
+}
+.login-cartao .link { margin-top: 14px; }
+.login-erro {
+  min-height: 1.3em;
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #A33A3A;
+}
+
+/* Aviso discreto (toast) */
+.aviso-rodape {
+  position: fixed;
+  left: 50%;
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  z-index: 1000;
+  max-width: calc(100vw - 32px);
+  translate: -50% 0;
+  padding: 12px 18px;
+  border-radius: 14px;
+  background: #4A2C35;
+  color: #FFF4F6;
+  font-weight: 700;
+  font-size: 0.92rem;
+  box-shadow: 0 10px 30px rgba(74, 44, 53, 0.35);
+  animation: aviso-entra 0.3s ease-out;
+  transition: opacity 0.4s, translate 0.4s;
+}
+.aviso-rodape.saindo { opacity: 0; translate: -50% 10px; }
+@keyframes aviso-entra {
+  from { opacity: 0; translate: -50% 10px; }
+}
+
+/* Seção "Sua conta" na janela Conta e backup */
+.conta-linha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+.conta-email { font-weight: 700; overflow-wrap: anywhere; }

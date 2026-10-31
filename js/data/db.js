@@ -2,7 +2,10 @@
 // Tudo é assíncrono (async/await) para que a troca do localStorage pelo
 // Supabase não exija mudar as telas.
 
-import * as store from "./local-store.js";
+// Os livros ficam na nuvem (Supabase). O local-store só é usado para ler a
+// biblioteca antiga guardada neste navegador (`readLocalLibrary`).
+import * as store from "./supabase-store.js";
+import * as local from "./local-store.js";
 
 const DEFAULT_SETTINGS = {
   sortBy: "personalizado",
@@ -104,10 +107,17 @@ export async function updateBook(id, changes) {
   const current = getBook(id);
   if (!current) return null;
   const book = { ...current, ...changes, updatedAt: new Date().toISOString() };
-  // Salva primeiro: se falhar (ex.: navegador sem espaço), nada muda na tela.
-  await store.putBook(book);
+  // Muda na tela na hora e salva na nuvem em seguida. Se falhar (ex.: sem
+  // internet), a tela volta ao que estava e o erro segue para quem chamou.
   books = books.map((b) => (b.id === id ? book : b));
   notify();
+  try {
+    await store.putBook(book);
+  } catch (err) {
+    books = books.map((b) => (b.id === id && b === book ? current : b));
+    notify();
+    throw err;
+  }
   return book;
 }
 
@@ -219,11 +229,17 @@ export async function addBooks(list) {
   const added = list.map((fields) => withDefaults(fields));
   const nextBooks = [...books, ...added];
   const nextSettings = { ...settings, customOrder: [...settings.customOrder, ...added.map((b) => b.id)] };
-  await store.replaceAll({ books: nextBooks, settings: nextSettings }); // se der erro, nada muda
+  await store.putBooks(added); // se der erro, nada muda na tela
+  await store.saveSettings(nextSettings);
   books = nextBooks;
   settings = nextSettings;
   notify();
   return added;
+}
+
+// Biblioteca guardada neste navegador antes da nuvem (pode estar vazia).
+export async function readLocalLibrary() {
+  return { books: await local.loadBooks(), settings: await local.loadSettings() };
 }
 
 // Atenção: substitui a biblioteca inteira. Só chamar após confirmação.

@@ -8,6 +8,7 @@ import * as db from "../data/db.js";
 import { confirmDialog, alertDialog } from "./dialogs.js";
 import { readGoodreadsFiles } from "../services/goodreads.js";
 import { findBook, coverUrl, suggestCategories } from "../services/openlibrary.js";
+import { currentUser, changePassword, signOut } from "./login.js";
 
 const LOOKUPS_AT_ONCE = 4; // buscas simultâneas na Open Library (para não sobrecarregar)
 
@@ -26,11 +27,22 @@ function build() {
   dialog.innerHTML = `
     <div class="janela">
       <section class="backup-inicio">
-        <h2>Backup</h2>
+        <h2>Conta e backup</h2>
+        <div class="backup-opcao">
+          <div>
+            <h3>Sua conta</h3>
+            <p>Os livros ficam guardados na nuvem e aparecem em qualquer aparelho em que você entrar.</p>
+            <p class="conta-linha">Conectada como <span class="conta-email"></span></p>
+          </div>
+          <div class="conta-botoes">
+            <button class="botao secundario" type="button" data-acao="trocar-senha">Trocar senha</button>
+            <button class="link" type="button" data-acao="sair">Sair</button>
+          </div>
+        </div>
         <div class="backup-opcao">
           <div>
             <h3>Guardar uma cópia</h3>
-            <p>Baixa um arquivo com tudo: livros, notas, resenhas, trechos, playlists, estantes e lista de desejos.</p>
+            <p>Baixa um arquivo com tudo: livros, notas, resenhas, trechos, playlists, estantes e lista de desejos. Uma segurança extra, além da nuvem.</p>
           </div>
           <button class="botao" type="button" data-acao="exportar">⬇ Exportar backup</button>
         </div>
@@ -48,7 +60,6 @@ function build() {
           </div>
           <button class="botao secundario" type="button" data-acao="goodreads">📚 Importar do Goodreads</button>
         </div>
-        <p class="backup-dica">Dica: guarde um backup de vez em quando — os livros ficam salvos só neste navegador.</p>
         <div class="acoes"><button class="botao secundario" type="button" data-acao="fechar">Fechar</button></div>
       </section>
 
@@ -78,6 +89,15 @@ function build() {
 
   const on = (action, fn) => dialog.querySelectorAll(`[data-acao="${action}"]`).forEach((b) => b.addEventListener("click", fn));
   on("fechar", () => dialog.close());
+  on("trocar-senha", () => changePassword());
+  on("sair", async () => {
+    const ok = await confirmDialog({
+      title: "Sair da conta?",
+      message: "Os livros continuam guardados na nuvem. Para ver de novo, é só entrar com e-mail e senha.",
+      confirmText: "Sair",
+    });
+    if (ok) signOut();
+  });
   on("exportar", () => downloadBackup());
   on("importar", () => pickFiles(".json,application/json", false).then((files) => files[0] && importBackup(files[0])));
   on("goodreads", () => pickFiles(".csv,.html,.htm,text/csv,text/html", true).then((files) => files.length && readGoodreads(files)));
@@ -92,10 +112,11 @@ function show(section) {
   [mainEl, goodreadsEl, progressEl].forEach((el) => (el.hidden = el !== section));
 }
 
-export function openBackup() {
+export async function openBackup() {
   if (!dialog) build();
   pending = null;
   show(mainEl);
+  dialog.querySelector(".conta-email").textContent = (await currentUser())?.email || "—";
   dialog.showModal();
 }
 

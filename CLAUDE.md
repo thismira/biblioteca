@@ -16,7 +16,8 @@ soltar, lista de desejos com link para a Amazon UK e backup em JSON.
   localStorage, sobrescrever dados ao importar backup ou rodar scripts de teste
   que substituam a biblioteca.
 - Acessar dados **somente** por `js/data/db.js`. Nenhum outro arquivo usa
-  `localStorage` diretamente (para depois trocarmos pelo Supabase).
+  `localStorage` diretamente (só o `local-store.js`, para ler a biblioteca
+  antiga do navegador; a supabase-js guarda ali a sessão de login).
 - Desktop primeiro, mas não usar soluções que impeçam a versão para celular
   (pointer events em vez de eventos de mouse, layouts que se redistribuem).
 - Um commit a cada funcionalidade que funcionar, testada no preview.
@@ -33,8 +34,8 @@ soltar, lista de desejos com link para a Amazon UK e backup em JSON.
   `Cache-Control: no-store` — o `http.server` comum deixava o navegador usar
   JS antigo do cache). Módulos não funcionam abrindo o arquivo com duplo
   clique.
-- Dados: `localStorage` via `js/data/local-store.js`; a API de `db.js` é toda
-  assíncrona para facilitar a troca por um `supabase-store.js`.
+- Dados: **Supabase** (nuvem) via `js/data/supabase-store.js`, com login
+  por e-mail e senha. Detalhes na seção "Supabase" abaixo.
 
 ## Estrutura
 - `index.html` — página única.
@@ -273,6 +274,37 @@ soltar, lista de desejos com link para a Amazon UK e backup em JSON.
 - Fontes: Cormorant Garamond (títulos, lombadas, quotes) + Nunito Sans
   (interface).
 - Cores definidas como variáveis em `:root` (`css/base.css` e `css/shelf.css`).
+
+## Supabase (dados na nuvem e login)
+- Projeto `omtrntkwpdupulcvubwi` (São Paulo). `js/data/config.js` tem a URL
+  e a chave **publishable** (pública por natureza). A chave secreta nunca
+  entra no site nem nesta conversa.
+- Banco: `supabase/schema.sql` (rodado no SQL Editor; idempotente). Tabela
+  `books` (`user_id`, `id`, `data` jsonb = o livro inteiro no formato do
+  site) e `settings` (`user_id`, `data` jsonb). RLS em tudo com
+  `(select auth.uid()) = user_id`; UPDATE com USING + WITH CHECK; `anon` sem
+  acesso; `grant` explícito para `authenticated` (tabelas novas não são
+  expostas automaticamente no Supabase desde 2026).
+- `supabase-store.js` tem as mesmas funções do `local-store.js` (+
+  `putBooks` em lotes de 100). Gravações do mesmo livro vão em fila
+  (`enqueue`) para uma antiga nunca chegar depois de uma nova.
+  `db.updateBook` é otimista: muda a tela na hora e desfaz se a gravação
+  falhar (aviso com `toast()` via `unhandledrejection` em `main.js`).
+- `supabase-js` 2.118.0 copiada em `js/vendor/supabase.js` (UMD, global
+  `window.supabase`; conferida no jsDelivr e no unpkg). Atualizar = baixar
+  versão fixa nova e conferir.
+- Login (`ui/login.js`): `ensureLogin()` antes de `db.init()`; sessão
+  lembrada no aparelho; "Esqueci minha senha" (`resetPasswordForEmail`,
+  volta para o próprio endereço do site → evento `PASSWORD_RECOVERY` pede a
+  senha nova); "Trocar senha" e "Sair" na janela "Conta e backup".
+  Cadastro público desligado no painel; a conta dela é criada no painel
+  (Authentication → Users). No painel, URL Configuration precisa ter o
+  endereço do site (e `http://localhost:8080`) nas Redirect URLs.
+- Primeiro login com a conta vazia: `offerLocalUpload()` (main.js) oferece
+  enviar a biblioteca antiga deste navegador (`db.readLocalLibrary()` →
+  `importAll`). Os dados locais não são apagados.
+- Eu (Claude) não faço login no site: entrar com a senha é sempre com o dono.
+  Testes logados = ele entra no preview e eu observo.
 
 ## Publicação
 Publicado em **https://thismira.github.io/biblioteca/** (repositório público

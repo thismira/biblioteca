@@ -1,6 +1,8 @@
 // Implementação do armazenamento usando o localStorage do navegador.
-// É o ÚNICO arquivo que toca no localStorage. Para usar o Supabase depois,
-// basta criar um supabase-store.js com estas mesmas funções.
+// É o ÚNICO arquivo do site que toca no localStorage (a biblioteca do
+// Supabase guarda ali só a sessão de login). Hoje os livros ficam na nuvem
+// (supabase-store.js, mesmas funções); este arquivo serve para ler a
+// biblioteca antiga deste navegador e enviá-la para a nuvem.
 
 const KEY_BOOKS = "minha-biblioteca:livros";
 const KEY_SETTINGS = "minha-biblioteca:config";
@@ -36,6 +38,10 @@ export async function putBook(book) {
   if (i >= 0) books[i] = book;
   else books.push(book);
   write(KEY_BOOKS, books);
+}
+
+export async function putBooks(list) {
+  write(KEY_BOOKS, [...read(KEY_BOOKS, []).filter((b) => !list.some((n) => n.id === b.id)), ...list]);
 }
 
 export async function removeBook(id) {

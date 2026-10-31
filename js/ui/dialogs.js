@@ -51,7 +51,8 @@ export async function alertDialog({ title, message, buttonText = "Entendi" }) {
 
 // Pede um texto (ex.: nome de estante). Devolve o texto ou null se ela
 // cancelar. `validate(texto)` pode devolver uma mensagem de erro.
-export function promptDialog({ title, label, value = "", placeholder = "", confirmText = "Salvar", validate }) {
+// `type: "password"` esconde o que é digitado (senhas não são aparadas).
+export function promptDialog({ title, label, value = "", placeholder = "", confirmText = "Salvar", validate, type = "text" }) {
   return new Promise((resolve) => {
     const dialog = document.createElement("dialog");
     dialog.className = "janela-confirmar";
@@ -75,13 +76,18 @@ export function promptDialog({ title, label, value = "", placeholder = "", confi
     const error = dialog.querySelector(".pergunta-erro");
     input.value = value;
     input.placeholder = placeholder;
+    if (type === "password") {
+      input.type = "password";
+      input.autocomplete = "new-password";
+      input.removeAttribute("maxlength");
+    }
     document.body.appendChild(dialog);
 
     let answer = null;
     dialog.querySelector("form").addEventListener("submit", (event) => {
       event.preventDefault();
-      const text = input.value.trim();
-      const problem = !text ? "Escreva um nome." : validate?.(text);
+      const text = type === "password" ? input.value : input.value.trim();
+      const problem = !text ? (type === "password" ? "Escreva a senha." : "Escreva um nome.") : validate?.(text);
       if (problem) {
         error.textContent = problem;
         input.focus();
@@ -110,4 +116,15 @@ export async function chooseDialog({ title, message, options }) {
     buttons: options.map(({ text, value }, i) => ({ text, value, kind: i === 0 ? "" : "secundario" })),
   });
   return options.some((o) => o.value === answer) ? answer : null;
+}
+
+// Aviso discreto no pé da tela, que some sozinho (ex.: "não salvou").
+export function toast(message, { ms = 4500 } = {}) {
+  const el = document.createElement("div");
+  el.className = "aviso-rodape";
+  el.setAttribute("role", "status");
+  el.textContent = message;
+  document.body.appendChild(el);
+  setTimeout(() => el.classList.add("saindo"), ms);
+  setTimeout(() => el.remove(), ms + 400);
 }
