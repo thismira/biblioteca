@@ -257,8 +257,18 @@ soltar, lista de desejos com link para a Amazon UK e backup em JSON.
 - Cores definidas como variáveis em `:root` (`css/base.css` e `css/shelf.css`).
 
 ## Publicação
-GitHub Pages, servindo a raiz da branch `main` (passo a passo no README, via
-GitHub Desktop). Todos os caminhos são relativos (`css/…`, `js/…`, `img/…`)
+Publicado em **https://thismira.github.io/biblioteca/** (repositório público
+`thismira/biblioteca`, GitHub Pages servindo a raiz da branch `main`).
+Atualizar = `git push` (o Pages republica em ~1 min). **Sempre perguntar ao
+dono antes de dar push** — o site está no ar. O push usa a CLI oficial `gh`
+(login já feito, token no Keychain): baixada em pasta temporária; se sumir,
+baixar de github.com/cli/cli/releases (conferir o checksum) e usar
+`git -c credential.helper= -c "credential.helper=!<gh> auth git-credential" push`.
+Commits usam o e-mail noreply do GitHub (configurado no repositório; o
+e-mail pessoal foi tirado do histórico antes de publicar). Domínio próprio
+planejado: `mlibrary.com.br` (o dono compra; depois: arquivo `CNAME` +
+registros DNS). Os dados ficam por endereço (localStorage): ela deve
+começar a usar já no endereço definitivo. Passo a passo manual no README. Todos os caminhos são relativos (`css/…`, `js/…`, `img/…`)
 para funcionar em `usuario.github.io/<repositório>/` — nunca usar caminhos
 começando com `/`. `.nojekyll` desliga o processamento do GitHub. Ícone:
 `img/icone.svg` (aba) e `img/icone-180.png` (tela inicial do iPhone, sem
