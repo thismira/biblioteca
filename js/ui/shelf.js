@@ -18,6 +18,10 @@ const hasPhoto = (book) => Boolean(book.spinePhoto) && book.format !== "kindle";
 
 // Altura e espessura da lombada a partir do número de páginas.
 // Com foto, a espessura segue a proporção da foto (para não esticar).
+// No celular as lombadas ficam 20% menores (cabem mais livros por prateleira);
+// a estante se redesenha sozinha ao cruzar esse tamanho de tela.
+const compact = window.matchMedia("(max-width: 600px)");
+const COMPACT = 0.8;
 export function spineSize(book) {
   const pages = book.pages || DEFAULT_PAGES;
   const t = Math.min(Math.max((pages - 100) / 700, 0), 1);
@@ -26,7 +30,8 @@ export function spineSize(book) {
   const width = hasPhoto(book) && book.spinePhotoAspect
     ? Math.round(Math.min(Math.max(height * book.spinePhotoAspect, 16), 80))
     : Math.round(Math.min(Math.max(12 + Math.sqrt(pages) * 1.6, 26), 60));
-  return { height, width };
+  const k = compact.matches ? COMPACT : 1;
+  return { height: Math.round(height * k), width: Math.round(width * k) };
 }
 
 // "Régua" do navegador: mede a largura real de um texto numa fonte.

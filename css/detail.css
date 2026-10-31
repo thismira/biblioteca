@@ -641,3 +641,49 @@ dialog.detalhe::backdrop { background: transparent; }
   opacity: 0.6;
   cursor: progress;
 }
+
+/* ---------- Celular: página do livro ----------
+   Tela cheia, capa pequena ao lado do título (o mais importante aparece
+   logo) e as opções de lombada no fim. `display: contents` faz as duas
+   colunas "sumirem" para que os blocos entrem direto na grade. */
+@media (max-width: 600px) {
+  .detalhe-painel {
+    width: 100%;
+    min-height: 100dvh;
+    margin: 0;
+    padding: 18px 16px calc(28px + env(safe-area-inset-bottom));
+    border-radius: 0;
+  }
+  .detalhe-fechar {
+    position: fixed;
+    top: calc(10px + env(safe-area-inset-top));
+    right: 10px;
+    z-index: 5;
+    box-shadow: inset 0 0 0 1.5px var(--linha), 0 4px 12px rgba(74, 44, 53, 0.2);
+  }
+  .detalhe-grade {
+    grid-template-columns: 104px minmax(0, 1fr);
+    gap: 0 14px;
+  }
+  .detalhe-lado,
+  .detalhe-principal { display: contents; }
+  .detalhe-lado { max-width: none; }
+
+  .detalhe-grade > *,
+  .detalhe-lado > *,
+  .detalhe-principal > * { grid-column: 1 / -1; order: 5; }
+
+  .detalhe-capa { grid-column: 1; grid-row: 1 / span 4; order: 0; align-self: start; }
+  .detalhe-titulo { grid-column: 2; order: 1; padding-right: 44px; font-size: 1.4rem; }
+  .detalhe-autor { grid-column: 2; order: 2; }
+  .detalhe-meta { grid-column: 2; order: 3; }
+  .detalhe-capa-acoes { grid-column: 2; order: 4; margin: 8px 0 0; align-self: end; flex-wrap: wrap; }
+  .lombada-opcoes { order: 99; }
+  .detalhe-rodape { order: 100; }
+
+  .status-opcoes { margin-top: 18px; width: 100%; }
+  .status-opcoes button { flex: 1; }
+  .capa-gerada { padding: 8px; gap: 4px; }
+  .capa-gerada strong { font-size: 1rem; }
+  .capa-gerada span { font-size: 0.6rem; }
+}

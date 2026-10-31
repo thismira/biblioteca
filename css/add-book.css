@@ -161,7 +161,8 @@
   align-items: start;
 }
 @media (max-width: 520px) {
-  .revisar-grade { grid-template-columns: 1fr; }
+  /* capa pequena ao lado do título, em vez de ocupar a tela toda */
+  .revisar-grade { grid-template-columns: 84px minmax(0, 1fr); gap: 14px; }
 }
 
 .capa-previa {

@@ -69,6 +69,13 @@ a { color: var(--acento); }
   font-size: clamp(2.8rem, 7vw, 4.4rem);
   letter-spacing: 0.01em;
 }
+/* Celular: cabeçalho mais baixo, para os livros aparecerem antes */
+@media (max-width: 600px) {
+  .topo { padding: calc(18px + env(safe-area-inset-top)) 16px 4px; }
+  .topo h1 { font-size: 2.4rem; }
+  .barra { margin-bottom: 14px; }
+  .barra .botao { padding: 9px 16px; }
+}
 
 .ornamento {
   display: block;
@@ -165,6 +172,11 @@ dialog {
   box-shadow: 0 20px 60px rgba(74, 44, 53, 0.25);
   width: min(560px, calc(100vw - 32px));
   max-height: calc(100vh - 48px);
+}
+/* Celular: janelas quase da largura da tela */
+@media (max-width: 600px) {
+  dialog, dialog[class] { width: calc(100vw - 20px); max-height: calc(100dvh - 20px); }
+  .janela { padding: 20px 16px; }
 }
 dialog::backdrop {
   background: rgba(74, 44, 53, 0.35);
@@ -274,4 +286,24 @@ dialog::backdrop {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
   }
+}
+
+/* ---------- Toque (celular e tablet) ---------- */
+/* Sem o "flash" cinza ao tocar e sem a espera do zoom de toque duplo. */
+button, a, label, select, input, .lombada, .mini-estante {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+/* Segurar um livro (para arrastar) não abre o menu de copiar/compartilhar. */
+.lombada, .mini-estante, .livro-lendo, .desejo-capa, .detalhe-capa, .mini-capa {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+@media (pointer: coarse) {
+  /* O iPhone dá zoom em campos com letra menor que 16px: evita isso. */
+  input, select, textarea { font-size: max(16px, 1em); }
+  /* Alvos de toque um pouco maiores */
+  .chip { min-height: 36px; }
+  .link { padding-block: 6px; }
 }

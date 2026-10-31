@@ -555,3 +555,30 @@
   box-shadow: inset 0 0 0 1.5px #B38530;
 }
 .filtro-nota .link { font-size: 0.85rem; }
+
+/* ---------- Celular: estante aberta mais compacta ----------
+   Menos espaço antes do primeiro livro: "← Sala" e o nome na mesma linha e
+   o filtro de nota numa faixa só, que rola para o lado. */
+@media (max-width: 600px) {
+  .vista-cabecalho { gap: 10px 12px; margin-bottom: 14px; }
+  #btn-sala { padding: 8px 14px; }
+  .vista-titulo { gap: 8px; margin-right: 0; flex: 1; min-width: 0; }
+  .vista-titulo h2 { font-size: 1.55rem; overflow-wrap: anywhere; }
+  .vista-acoes, #btn-novo-desejo { width: 100%; }
+  #btn-novo-desejo { padding: 10px; }
+
+  .vista-filtros { gap: 10px; margin: -4px 0 14px; }
+  .ordenar { width: 100%; }
+  .ordenar select { flex: 1; }
+  .filtro-nota {
+    flex-wrap: nowrap;
+    width: calc(100% + 32px);
+    margin: 0 -16px;
+    padding: 2px 16px 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .filtro-nota::-webkit-scrollbar { display: none; }
+  .filtro-nota > * { flex: none; }
+  .filtro-nota [data-nota] { padding: 8px 13px; }
+}

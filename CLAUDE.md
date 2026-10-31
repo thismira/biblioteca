@@ -230,6 +230,24 @@ soltar, lista de desejos com link para a Amazon UK e backup em JSON.
     (que é o atributo title do próprio formulário).
 - `js/utils/` — funções de cor e utilidades.
 
+## Celular (até 600px de largura)
+- Cabeçalho mais baixo; na estante aberta "← Sala" e o nome na mesma linha
+  e o filtro de nota numa faixa que rola para o lado (`room.css`).
+- Lombadas 20% menores (`COMPACT` em `spineSize()`, shelf.js, via
+  `matchMedia`) e prateleiras mais baixas (`--prateleira-altura` em
+  shelf.css): cabem 7–8 livros por prateleira. A miniatura da sala também
+  usa `spineSize`, então encolhe junto.
+- Página do livro em tela cheia: capa pequena ao lado do título, status
+  logo abaixo, "Lombada" e "Excluir" no fim. Feito só com CSS:
+  `.detalhe-lado`/`.detalhe-principal` viram `display: contents` e os
+  blocos são ordenados na grade (`order`). O × fica fixo no canto.
+- Janelas quase da largura da tela; revisão do cadastro com capa pequena.
+- Toque (`base.css`): campos com 16px em telas de toque (senão o iPhone dá
+  zoom), sem menu de copiar ao segurar livro (necessário para arrastar),
+  `touch-action: manipulation`, chips com 36px de altura.
+- Arrastar com o dedo: segurar 350 ms (drag.js) — testado no tamanho de
+  celular com eventos de toque.
+
 ## Visual
 - Título do site: **M’s Library**, centralizado, com ornamento em SVG.
 - Paleta: fundo `#FDF1F1` com papel de parede (listras e florzinhas em SVG),

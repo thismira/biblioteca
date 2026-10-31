@@ -151,6 +151,12 @@
 @media (max-width: 520px) {
   .estante-lendo .prateleira { padding: 0 12px; }
 }
+/* Celular: lombadas 20% menores (shelf.js) pedem prateleiras mais baixas */
+@media (max-width: 600px) {
+  .estante { --prateleira-altura: 228px; padding: 12px 12px 0; }
+  .estante .prateleira { padding: 0 10px; }
+  .estante.estante-lendo { --prateleira-altura: 252px; }
+}
 
 .livro-lendo {
   position: relative;
