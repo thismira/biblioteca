@@ -292,6 +292,9 @@ começando com `/`. `.nojekyll` desliga o processamento do GitHub. Ícone:
 `img/icone.svg` (aba) e `img/icone-180.png` (tela inicial do iPhone, sem
 cantos transparentes); `site.webmanifest` para "Adicionar à tela inicial".
 Dados de leitura nunca entram no repositório (ficam no navegador).
+`<meta name="robots" content="noindex, nofollow">` no index.html: o site não
+aparece em buscadores (só quem tem o link). Senha de verdade só com o
+Supabase (login).
 
 ## Preview local
 O macOS impede o servidor iniciado pelo preview de ler a pasta Documentos.
