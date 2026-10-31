@@ -214,10 +214,24 @@ export async function exportAll() {
   return { app: "minha-biblioteca", version: 1, exportedAt: new Date().toISOString(), books, settings };
 }
 
+// Vários livros de uma vez (importação), salvos numa gravação só.
+export async function addBooks(list) {
+  const added = list.map((fields) => withDefaults(fields));
+  const nextBooks = [...books, ...added];
+  const nextSettings = { ...settings, customOrder: [...settings.customOrder, ...added.map((b) => b.id)] };
+  await store.replaceAll({ books: nextBooks, settings: nextSettings }); // se der erro, nada muda
+  books = nextBooks;
+  settings = nextSettings;
+  notify();
+  return added;
+}
+
 // Atenção: substitui a biblioteca inteira. Só chamar após confirmação.
 export async function importAll(data) {
-  books = data.books.map((b) => withDefaults(b));
-  settings = { ...DEFAULT_SETTINGS, ...data.settings };
-  await store.replaceAll({ books, settings });
+  const nextBooks = data.books.map((b) => withDefaults(b));
+  const nextSettings = { ...DEFAULT_SETTINGS, ...data.settings };
+  await store.replaceAll({ books: nextBooks, settings: nextSettings }); // se der erro, nada muda
+  books = nextBooks;
+  settings = nextSettings;
   notify();
 }

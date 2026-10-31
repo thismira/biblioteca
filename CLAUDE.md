@@ -137,6 +137,24 @@ soltar, lista de desejos com link para a Amazon UK e backup em JSON.
     estante) e "remover" (com confirmação). No cadastro: "Guardar em:
     Estante / Lista de desejos" (`openAddBook(query, { destination })`).
     A busca da sala também acha desejos.
+  - `backup.js` (botão "Backup" no topo): exportar tudo
+    (`backup-biblioteca-AAAA-MM-DD.json`, de `db.exportAll()`), importar
+    backup (valida `app: "minha-biblioteca"`, mostra resumo, confirma) e
+    importar do Goodreads ("Juntar" pula repetidos por ISBN ou
+    título+autor; "Substituir" confirma). Antes de substituir, baixa
+    sozinho `…-antes-de-substituir.json`. Importação busca capa/categorias
+    na Open Library (`findBook()`: ISBN, depois título+autor; 4 por vez,
+    com barra de progresso; ~90% acham capa). `db.addBooks()` grava vários
+    livros de uma vez; `importAll`/`addBooks` só mudam a memória depois de
+    salvar (erro de espaço = nada muda).
+  - `services/goodreads.js`: lê a planilha oficial (`.csv`, com estantes e
+    resenhas) ou a página da lista salva pelo navegador
+    (`/review/list/<id>?print=true`, para a lista de um amigo; várias
+    páginas, sem repetir). A página não traz estantes: status deduzido
+    (começou sem terminar = lendo; leu ou deu nota = lido; senão quero
+    ler). Tira subtítulo (": …") e série; "Sobrenome, Nome" vira "Nome
+    Sobrenome"; Kindle/ebook = formato kindle. O feed RSS do Goodreads não
+    funciona mais (404) e a lista pede login — não tentar buscar online.
   - `shelf-books-picker.js`: lista com caixinhas para escolher os livros de
     uma estante dela: busca sem acentos (título, autor, categoria), filtros
     por status, categoria e nota, "Só os marcados", e "Marcar/Desmarcar
@@ -244,7 +262,7 @@ dentro da pasta) e o `.claude/launch.json` só se conecta a
 
 ## Formato de um livro
 ```
-{ id, title, author, coverUrl, pages, isbn, categories: [],
+{ id, title, author, coverUrl, pages, isbn, categories: [], goodreadsId?,
   location: "estante" | "desejos",
   status: "quero ler" | "lendo" | "lido",
   format: "fisico" | "kindle",

@@ -15,6 +15,7 @@ import { createWishlist } from "./ui/wishlist.js";
 import { SORT_OPTIONS } from "./ui/sort.js";
 import { flipReorder } from "./ui/flip.js";
 import { openAddBook } from "./ui/add-book.js";
+import { openBackup } from "./ui/backup.js";
 import { openBookDetail, closeBookDetail, isBookDetailOpen } from "./ui/book-detail.js";
 import { flyIntoShelf, flyIntoCard, reducedMotion, done } from "./ui/fly-book.js";
 import { confirmDialog, promptDialog, chooseDialog } from "./ui/dialogs.js";
@@ -444,6 +445,7 @@ $("btn-novo-desejo").addEventListener("click", () => openAddBook("", { destinati
 
 $("btn-sala").addEventListener("click", backToRoom);
 $("btn-adicionar").addEventListener("click", () => openAddBook());
+$("btn-backup").addEventListener("click", openBackup);
 
 // ---------- Cores das lombadas ----------
 // Livros com capa e sem cor extraída (ou cuja capa ou regra de extração

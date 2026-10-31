@@ -174,6 +174,23 @@ export async function getEditions(workKey, lang, { signal } = {}) {
   return shown.sort((a, b) => score(b) - score(a) || (b.year || 0) - (a.year || 0));
 }
 
+// Acha um livro já conhecido (ex.: vindo do Goodreads) para pegar capa,
+// páginas e assuntos: pelo ISBN (edição exata) ou por título + autor.
+export async function findBook({ isbn, title, author }, { signal } = {}) {
+  const tries = [];
+  if (isbn) tries.push(`isbn=${encodeURIComponent(isbn)}`);
+  if (title) tries.push(`title=${encodeURIComponent(title)}${author ? `&author=${encodeURIComponent(author)}` : ""}`);
+  let found = null;
+  for (const query of tries) {
+    const data = await getJson(`${BASE}/search.json?${query}&fields=${FIELDS.join(",")}&limit=1`, { signal });
+    if (!data.docs.length) continue;
+    const result = toResult(data.docs[0]);
+    if (result.coverId) return result;
+    found ||= result; // achou, mas sem capa: tenta o próximo jeito
+  }
+  return found;
+}
+
 // Começa a buscar as edições antes do clique (ao passar o mouse ou focar um
 // resultado). Quando ela clicar, a resposta já está chegando ou guardada.
 export function prefetchEditions(workKey) {
