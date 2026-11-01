@@ -13,6 +13,7 @@ import { PERSPECTIVE as P, px, lerp, done, reducedMotion, spineFace } from "./fl
 import { setCoverImage } from "./cover-image.js";
 import { createQuotes } from "./quotes.js";
 import { createPlaylist } from "./playlist.js";
+import { isKindle, readPercent, entryPercent, pageAt, percentProgress } from "../utils/progress.js";
 
 const STATUSES = [["quero ler", "Quero ler"], ["lendo", "Lendo"], ["lido", "Lido"]];
 const HISTORY_SIZE = 6; // quantas atualizações de página aparecem no histórico
@@ -87,7 +88,10 @@ function build() {
             <p class="progresso-ultima"></p>
             <form class="progresso-atualizar">
               <label for="det-pagina">Estou na página</label>
-              <input id="det-pagina" type="number" min="0" inputmode="numeric">
+              <span class="progresso-campo">
+                <input id="det-pagina" type="number" min="0" inputmode="numeric">
+                <span class="progresso-unidade" hidden>%</span>
+              </span>
               <button class="botao" type="submit">Atualizar</button>
             </form>
             <form class="paginas-desconhecidas" hidden>
@@ -96,7 +100,7 @@ function build() {
               <button class="botao secundario" type="submit">Salvar</button>
             </form>
             <div class="progresso-terminou" hidden>
-              🎉 Você chegou à última página!
+              <span class="terminou-texto">🎉 Você chegou à última página!</span>
               <button class="botao" type="button" data-acao="marcar-lido">Marcar como lido</button>
             </div>
             <ol class="progresso-historico"></ol>
@@ -337,6 +341,7 @@ function since(iso) {
 const shortDate = (iso) => new Date(iso).toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
 
 function renderProgress(b) {
+  if (isKindle(b)) return renderPercentProgress(b);
   const pages = b.pages;
   const current = b.currentPage || 0;
   const pct = pages ? Math.min(100, Math.round((current / pages) * 100)) : 0;
@@ -345,6 +350,8 @@ function renderProgress(b) {
   $(".barra-preenchida").style.width = pct + "%";
 
   $(".paginas-desconhecidas").hidden = Boolean(pages);
+  setProgressInput("Estou na página", false);
+  $(".terminou-texto").textContent = "🎉 Você chegou à última página!";
   const input = $("#det-pagina");
   input.max = pages || "";
   input.value = "";
@@ -386,6 +393,76 @@ function renderProgress(b) {
     .reverse();
   $(".progresso-historico").innerHTML = items
     .map((e) => `<li><span>${shortDate(e.date)}</span> página ${e.page}${e.delta > 0 ? ` <em>+${e.delta}</em>` : e.delta === null ? " <em>início</em>" : ""}</li>`)
+    .join("");
+}
+
+// Campo de atualizar: página (livro físico) ou porcentagem (Kindle).
+function setProgressInput(label, percent) {
+  $('label[for="det-pagina"]').textContent = label;
+  $(".progresso-unidade").hidden = !percent;
+}
+
+// Kindle: o Kindle mostra só a %, então o progresso é contado em %.
+// Com o total de páginas, mostra também a página aproximada.
+function renderPercentProgress(b) {
+  const pages = b.pages;
+  const pct = b.status === "lido" ? 100 : readPercent(b) ?? 0;
+  $(".barra-progresso").setAttribute("aria-valuenow", String(pct));
+  $(".barra-preenchida").style.width = pct + "%";
+
+  $(".paginas-desconhecidas").hidden = true; // a % não depende do total de páginas
+  setProgressInput("Estou em", true);
+  $(".terminou-texto").textContent = "🎉 Você chegou ao fim do livro!";
+  const input = $("#det-pagina");
+  input.max = 100;
+  input.value = "";
+  input.placeholder = pct ? String(pct) : "";
+
+  const approx = (p) => (pages ? ` · ≈ pág. ${pageAt(p, pages)} de ${pages}` : "");
+  if (pct >= 100) {
+    $(".progresso-resumo").textContent = "100% lido";
+    $(".progresso-falta").textContent = b.status === "lido" ? "Livro terminado! 📚" : "Nada faltando.";
+  } else if (!pct) {
+    $(".progresso-resumo").textContent = "0% lido";
+    $(".progresso-falta").textContent = "Ainda não começou. Quando começar, conte aqui a % que aparece no Kindle.";
+  } else {
+    $(".progresso-resumo").textContent = `${pct}% lido${approx(pct)}`;
+    const left = pages ? ` (≈ ${pages - pageAt(pct, pages)} páginas)` : "";
+    $(".progresso-falta").textContent = `Faltam ${100 - pct}%${left} para terminar.`;
+  }
+
+  // Quanto ela avançou desde a atualização anterior.
+  const log = b.progressLog || [];
+  const percents = log.map((e) => entryPercent(e, pages));
+  const last = percents.at(-1);
+  const previous = percents.at(-2);
+  const lastEl = $(".progresso-ultima");
+  if (last != null && previous != null && last > previous) {
+    lastEl.textContent = `Na última atualização (${since(log.at(-1).date)}) você avançou ${last - previous}%: de ${previous}% até ${last}%.`;
+  } else if (last != null) {
+    lastEl.textContent = `Última atualização ${since(log.at(-1).date)}: ${last}%.`;
+  } else {
+    lastEl.textContent = "";
+  }
+
+  $(".progresso-terminou").hidden = !(pct >= 100 && b.status !== "lido");
+
+  // Histórico: as atualizações mais recentes primeiro, com o quanto avançou.
+  // Entradas antigas sem % (e sem total de páginas) aparecem como página.
+  const items = log
+    .map((entry, i) => {
+      const p = percents[i];
+      const before = i > 0 ? percents[i - 1] : null;
+      return {
+        date: entry.date,
+        text: p != null ? `${p}%` : `página ${entry.page}`,
+        delta: i === 0 ? null : p != null && before != null ? p - before : 0,
+      };
+    })
+    .slice(-HISTORY_SIZE)
+    .reverse();
+  $(".progresso-historico").innerHTML = items
+    .map((e) => `<li><span>${shortDate(e.date)}</span> ${e.text}${e.delta > 0 ? ` <em>+${e.delta}%</em>` : e.delta === null ? " <em>início</em>" : ""}</li>`)
     .join("");
 }
 
@@ -442,7 +519,9 @@ async function setStatus(status) {
   if (status === "lido") {
     if (!b.endDate) changes.endDate = today();
     if (!b.startDate) changes.startDate = today();
-    if (b.pages && (b.currentPage || 0) < b.pages) {
+    if (isKindle(b)) {
+      if ((readPercent(b) ?? 0) < 100) Object.assign(changes, percentProgress(b, 100));
+    } else if (b.pages && (b.currentPage || 0) < b.pages) {
       changes.currentPage = b.pages;
       changes.progressLog = [...(b.progressLog || []), { date: new Date().toISOString(), page: b.pages }];
     }
@@ -456,13 +535,18 @@ async function updatePage(event) {
   const b = book();
   const input = $("#det-pagina");
   if (input.value === "") return;
-  const page = Math.max(0, Math.min(Number(input.value), b.pages || Infinity));
-  const changes = {
-    currentPage: page,
-    progressLog: [...(b.progressLog || []), { date: new Date().toISOString(), page }],
-  };
+  let changes;
+  if (isKindle(b)) {
+    changes = percentProgress(b, Number(input.value)); // Kindle: em %
+  } else {
+    const page = Math.max(0, Math.min(Number(input.value), b.pages || Infinity));
+    changes = {
+      currentPage: page,
+      progressLog: [...(b.progressLog || []), { date: new Date().toISOString(), page }],
+    };
+  }
   // Atualizar a página de um livro "quero ler" significa que ela começou.
-  if (b.status === "quero ler" && page > 0) {
+  if (b.status === "quero ler" && (changes.progressPercent || changes.currentPage) > 0) {
     changes.status = "lendo";
     if (!b.startDate) changes.startDate = today();
   }

@@ -49,6 +49,7 @@ function withDefaults(fields) {
     // Histórico de atualizações de leitura: [{ date, page }].
     // Permite mostrar quantas páginas ela leu desde a última atualização.
     progressLog: [],
+    progressPercent: null, // % lido no Kindle (o Kindle não mostra páginas)
     favorite: false,
     edition: null, // { publisher, year, lang } da edição escolhida
     startDate: "",

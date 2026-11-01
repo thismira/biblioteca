@@ -6,6 +6,7 @@
 import * as db from "../data/db.js";
 import { spineColor } from "./shelf.js";
 import { setCoverImage } from "./cover-image.js";
+import { readPercent } from "../utils/progress.js";
 
 const MAX_RESULTS = 8;
 const CLOSE_DELAY = 400; // ms até fechar a lista depois de abrir um livro
@@ -16,9 +17,8 @@ export const plain = (text) => String(text || "").normalize("NFD").replace(/\p{D
 
 function statusText(book) {
   if (book.location === "desejos") return "♡ Na lista de desejos";
-  if (book.status === "lendo" && book.pages) {
-    return `Lendo · ${Math.min(100, Math.round(((book.currentPage || 0) / book.pages) * 100))}%`;
-  }
+  const pct = readPercent(book);
+  if (book.status === "lendo" && pct != null) return `Lendo · ${pct}%`;
   return STATUS[book.status] || "";
 }
 

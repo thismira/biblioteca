@@ -9,6 +9,7 @@ import { searchBooks, isSearchable, getEditions, prefetchEditions, coverUrl, sug
 import { createCategoryPicker } from "./category-picker.js";
 import { createStar } from "./favorite-star.js";
 import { setCoverImage } from "./cover-image.js";
+import { percentProgress } from "../utils/progress.js";
 
 const SEARCH_DELAY = 350; // espera ela parar de digitar (ms)
 
@@ -184,6 +185,7 @@ function build() {
   on("voltar-revisar", () => showStep(draft.manual ? "busca" : "edicao"));
   form.status.addEventListener("change", updateStatusFields);
   form.pages.addEventListener("input", updateStatusFields);
+  form.format.addEventListener("change", updateStatusFields);
   setupRating();
   form.querySelector(".destino").addEventListener("click", (event) => {
     const button = event.target.closest("[data-destino]");
@@ -477,9 +479,12 @@ function updateStatusFields() {
   form.querySelector(".campo-pagina-atual").hidden = wish || status !== "lendo";
   form.querySelector(".campos-lido").hidden = wish || status !== "lido";
   if (status === "lido" && !form.endDate.value) form.endDate.value = today();
+  // Kindle mostra a leitura em %, não em páginas.
+  const kindle = form.format.value === "kindle";
   const total = totalPages();
-  form.currentPage.max = total || "";
-  form.querySelector(".dica-pagina").textContent = total ? `de ${total} páginas` : "";
+  form.querySelector('label[for="cad-pagina-atual"]').textContent = kindle ? "Em que % você está?" : "Em que página você está?";
+  form.currentPage.max = kindle ? 100 : total || "";
+  form.querySelector(".dica-pagina").textContent = kindle ? "a % que aparece no Kindle" : total ? `de ${total} páginas` : "";
 }
 
 // Estrelas da nota: passar o mouse mostra a prévia; clicar de novo apaga.
@@ -529,6 +534,13 @@ async function save(event) {
   let progressLog = [];
   if (status === "lendo") progressLog = [{ date: now, page: currentPage }];
   if (status === "lido" && pages) progressLog = [{ date: now, page: pages }];
+  // Kindle: o progresso é a % (e a página fica aproximada).
+  const kindle = form.format.value === "kindle";
+  let percent = {};
+  if (kindle && status !== "quero ler") {
+    const value = status === "lido" ? 100 : Number(form.currentPage.value) || 0;
+    percent = percentProgress({ pages, progressLog: [] }, value, now);
+  }
 
   const book = await db.addBook({
     location: destination,
@@ -542,6 +554,7 @@ async function save(event) {
     format: form.format.value,
     currentPage,
     progressLog,
+    ...percent,
     startDate: status === "lendo" ? today() : "",
     endDate: status === "lido" ? form.endDate.value || today() : "",
     rating: status === "lido" ? rating : 0,

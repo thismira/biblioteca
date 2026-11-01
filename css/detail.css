@@ -246,6 +246,12 @@ dialog.detalhe::backdrop { background: transparent; }
 .paginas-desconhecidas input {
   width: 110px;
 }
+.progresso-campo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.progresso-unidade { font-weight: 700; }
 
 .progresso-terminou {
   display: flex;

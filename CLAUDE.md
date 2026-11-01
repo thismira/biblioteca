@@ -340,7 +340,8 @@ dentro da pasta) e o `.claude/launch.json` só se conecta a
   location: "estante" | "desejos",
   status: "quero ler" | "lendo" | "lido",
   format: "fisico" | "kindle",
-  currentPage, progressLog: [{ date, page }], favorite,
+  currentPage, progressLog: [{ date, page, percent? }], favorite,
+  progressPercent,                  // % lido (só Kindle; null = usa a página)
   edition: { publisher, year, lang },
   startDate, endDate, rating, review,
   quotes: [{ id, text, page, createdAt }], spotifyUrl,
@@ -359,6 +360,11 @@ ocupam espaço no localStorage (~5 MB no total); se lotar, `local-store.js`
 lança um erro claro e a página do livro mostra um aviso. No Supabase, as
 fotos devem ir para o Storage.
 
+Kindle não mostra páginas, só %: nos livros Kindle a página do livro e o
+cadastro pedem "Estou em __ %" (`js/utils/progress.js`: `readPercent`,
+`percentProgress`); a % fica em `progressPercent` e, se houver total de
+páginas, `currentPage` guarda a página aproximada. Use sempre
+`readPercent(book)` para mostrar o progresso.
 `progressLog` ganha uma entrada a cada atualização de página; a página do
 livro usa isso para mostrar % que falta, páginas que faltam e páginas lidas
 desde a última atualização. Ao abrir o banco, `db.init()` completa livros

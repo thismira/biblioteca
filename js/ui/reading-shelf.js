@@ -5,22 +5,23 @@
 import { setCoverImage } from "./cover-image.js";
 import { spineColor } from "./shelf.js";
 import { readableTextColor } from "../utils/color.js";
+import { isKindle, readPercent } from "../utils/progress.js";
 
 const TILE_WIDTH = 128; // largura normal de cada capa (px)
 const MIN_TILE = 92;    // em telas estreitas a capa encolhe até aqui para caberem 2
 const GAP = 22;         // espaço entre as capas (px), igual ao CSS
 
 // "32% · pág. 152" (ou só a página, se o total for desconhecido).
+// No Kindle, só a porcentagem: "32% · Kindle".
 function progressLabel(book) {
+  const pct = readPercent(book);
+  if (isKindle(book) && pct != null) return pct ? `${pct}% · Kindle` : "0% · começando";
   const current = book.currentPage || 0;
-  if (!book.pages) return current ? `pág. ${current}` : "começando";
-  const pct = Math.min(100, Math.round((current / book.pages) * 100));
+  if (pct == null) return current ? `pág. ${current}` : "começando";
   return current ? `${pct}% · pág. ${current}` : "0% · começando";
 }
 
-function progressPercent(book) {
-  return book.pages ? Math.min(100, Math.round(((book.currentPage || 0) / book.pages) * 100)) : 0;
-}
+const progressPercent = (book) => readPercent(book) ?? 0;
 
 export function createReadingShelf(container, { onOpen }) {
   const elements = new Map(); // id do livro -> elemento da capa
