@@ -22,10 +22,25 @@ function statusText(book) {
   return STATUS[book.status] || "";
 }
 
+const searchWords = (query) => plain(query).split(/\s+/).filter(Boolean);
+
+// Texto onde a busca procura: título, autor, categorias e estantes dela.
+function searchText(book, shelves) {
+  const extra = [...book.categories, ...shelves.filter((s) => s.bookIds.includes(book.id)).map((s) => s.name)];
+  return plain(`${book.title} ${book.author} ${extra.join(" ")}`);
+}
+
+// O livro combina com a busca? (todas as palavras, sem ligar para acentos)
+export function matchesSearch(book, query) {
+  const words = searchWords(query);
+  const all = searchText(book, db.getShelves());
+  return words.every((w) => all.includes(w));
+}
+
 // Procura e ordena: título que começa com o texto > título que contém >
 // autor > o resto (categorias, estantes).
 export function searchLibrary(query) {
-  const words = plain(query).split(/\s+/).filter(Boolean);
+  const words = searchWords(query);
   if (!words.length) return [];
   const shelves = db.getShelves();
   const results = [];
@@ -33,8 +48,7 @@ export function searchLibrary(query) {
     // estantes e lista de desejos
     const title = plain(book.title);
     const author = plain(book.author);
-    const extra = plain([...book.categories, ...shelves.filter((s) => s.bookIds.includes(book.id)).map((s) => s.name)].join(" "));
-    const all = `${title} ${author} ${extra}`;
+    const all = searchText(book, shelves);
     if (!words.every((w) => all.includes(w))) continue;
     const q = words.join(" ");
     const score = title.startsWith(q) ? 0 : title.includes(q) ? 1 : author.includes(q) ? 2 : 3;

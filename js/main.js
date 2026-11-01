@@ -21,7 +21,7 @@ import { flyIntoShelf, flyIntoCard, reducedMotion, done } from "./ui/fly-book.js
 import { confirmDialog, promptDialog, chooseDialog, alertDialog, toast } from "./ui/dialogs.js";
 import { ensureLogin } from "./ui/login.js";
 import { pickShelfBooks } from "./ui/shelf-books-picker.js";
-import { createSearch } from "./ui/search.js";
+import { createSearch, matchesSearch } from "./ui/search.js";
 import { enableDragAndDrop } from "./ui/drag.js";
 import { queueSpineColor, SPINE_COLOR_VERSION } from "./services/spine-color.js";
 
@@ -48,6 +48,9 @@ let currentShelf = null;      // id da estante aberta (null = sala)
 // estante -> Set de notas escolhidas (0 = sem nota). Vazio = mostra todos.
 const ratingFilters = new Map();
 const activeFilter = () => ratingFilters.get(currentShelf) || new Set();
+// Busca dentro de cada estante (também só na memória): estante -> texto.
+const textFilters = new Map();
+const activeText = () => textFilters.get(currentShelf) || "";
 let clickedCard = null;       // miniatura clicada (para a animação de expandir)
 let shelfOpenedByClick = false;
 let clickedSpine = null;      // livro clicado (para a animação da página do livro)
@@ -173,10 +176,14 @@ function renderView() {
   if (info.wishlist) return renderWishlistView(info);
   const all = shelfBooks(currentShelf);
   const filter = activeFilter();
-  const books = filter.size ? all.filter((b) => filter.has(b.rating || 0)) : all;
+  const text = activeText().trim();
+  const books = all.filter((b) => (!filter.size || filter.has(b.rating || 0)) && (!text || matchesSearch(b, text)));
+  const filtered = filter.size > 0 || Boolean(text);
+  const searchInput = $("busca-estante");
+  if (searchInput.value !== activeText()) searchInput.value = activeText();
   $("vista-nome").textContent = info.name;
   $("vista-placa").textContent = `${info.icon ? info.icon + " " : ""}${info.name}`;
-  $("vista-contagem").textContent = filter.size ? `${books.length} de ${plural(all.length)}` : plural(all.length);
+  $("vista-contagem").textContent = filtered ? `${books.length} de ${plural(all.length)}` : plural(all.length);
   document.querySelectorAll("#filtro-nota [data-nota]").forEach((b) =>
     b.setAttribute("aria-pressed", String(filter.has(Number(b.dataset.nota))))
   );
@@ -186,7 +193,9 @@ function renderView() {
   $("vista-ordem").value = db.getShelfSort(currentShelf);
   const empty = $("vista-vazia");
   empty.hidden = books.length > 0;
-  empty.textContent = all.length && filter.size
+  empty.textContent = all.length && text
+    ? `Nenhum livro com “${text}” nesta estante${filter.size ? " (e com essa nota)" : ""}.`
+    : all.length && filter.size
     ? "Nenhum livro com essa nota nesta estante."
     : info.custom
       ? "Essa estante ainda está vazia. ✨ Use “+ Adicionar livros” ou a seção “Estantes” na página de cada livro."
@@ -360,6 +369,29 @@ $("filtro-nota").addEventListener("click", (event) => {
   ratingFilters.set(currentShelf, filter);
   const elements = shelfInfo(currentShelf).covers ? readingShelf.elements : shelf.elements;
   flipReorder(elements, renderView);
+});
+
+// ---------- Buscar nesta estante ----------
+// Enquanto ela digita, ficam só os livros que combinam (título, autor,
+// categoria). A animação espera uma pausa na digitação para não tremer.
+const SHELF_SEARCH_DELAY = 180;
+let shelfSearchTimer = null;
+function filterByText(value) {
+  if (!currentShelf) return;
+  textFilters.set(currentShelf, value);
+  clearTimeout(shelfSearchTimer);
+  shelfSearchTimer = setTimeout(() => {
+    if (!currentShelf) return;
+    const elements = shelfInfo(currentShelf).covers ? readingShelf.elements : shelf.elements;
+    flipReorder(elements, renderView);
+  }, SHELF_SEARCH_DELAY);
+}
+$("busca-estante").addEventListener("input", (e) => filterByText(e.target.value));
+$("busca-estante").addEventListener("keydown", (e) => {
+  if (e.key !== "Escape" || !e.target.value) return;
+  e.preventDefault();
+  e.target.value = "";
+  filterByText("");
 });
 
 // ---------- Arrastar e soltar ----------

@@ -103,6 +103,11 @@ soltar, lista de desejos com link para a Amazon UK e backup em JSON.
     nota", vários ao mesmo tempo; mostra "7 de 39 livros". Guardado só na
     memória (`ratingFilters`, por estante) — ao recarregar, tudo volta a
     aparecer. Usa `flipReorder` para fechar/abrir os espaços.
+  - Busca na estante aberta (`#busca-estante`, em `main.js`): filtra
+    enquanto ela digita (título, autor, categorias, estantes; sem acentos —
+    `matchesSearch()` em search.js), soma com o filtro de nota, Esc limpa.
+    Também só na memória (`textFilters`, por estante); a animação espera
+    180 ms de pausa na digitação.
   - `search.js`: busca na sala (título, autor, categorias, nomes das
     estantes; ignora acentos). Resultado abre a página do livro saindo da
     capinha (a lista só fecha 400 ms depois, senão a animação perde o ponto
