@@ -103,3 +103,27 @@ export async function replaceAll({ books, settings }) {
   }
   await saveSettings(settings);
 }
+
+// ---------- Escritório: histórias ----------
+// Cada história é uma linha da tabela `stories` (supabase/schema-escritorio.sql).
+// Apagar uma história apaga também os capítulos dela (cascade no banco).
+
+export async function loadStories() {
+  const res = await supabase.from("stories").select("data");
+  check(res);
+  return res.data.map((r) => r.data);
+}
+
+export async function putStory(story) {
+  return enqueue(`historia:${story.id}`, async () => {
+    const uid = await userId();
+    check(await supabase.from("stories").upsert(row(uid, story), { onConflict: "user_id,id" }));
+  });
+}
+
+export async function removeStory(id) {
+  return enqueue(`historia:${id}`, async () => {
+    const uid = await userId();
+    check(await supabase.from("stories").delete().eq("user_id", uid).eq("id", id));
+  });
+}

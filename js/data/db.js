@@ -238,6 +238,110 @@ export async function addBooks(list) {
   return added;
 }
 
+// ---------- Escritório: as histórias dela ----------
+// Carregadas só na primeira vez que ela entra no escritório (a biblioteca
+// não precisa delas). Avisos próprios (`subscribeStories`), para mudar uma
+// história não redesenhar a biblioteca escondida.
+
+export const STORY_STATUSES = [
+  ["ideia", "Ideia"],
+  ["escrevendo", "Escrevendo"],
+  ["editando", "Editando"],
+  ["pronta", "Pronta"],
+];
+
+let stories = [];
+let storiesLoaded = null; // promessa do primeiro carregamento
+const storyListeners = new Set();
+const notifyStories = () => storyListeners.forEach((fn) => fn());
+
+function storyDefaults(fields) {
+  const now = new Date().toISOString();
+  return {
+    id: newId(),
+    title: "",
+    synopsis: "",
+    status: "ideia",
+    genres: [],
+    color: "",          // cor da capa do caderno
+    order: 0,           // posição na mesa (menor = primeiro)
+    chapterOrder: [],   // ids dos capítulos, na ordem do manuscrito
+    words: 0,           // total de palavras (somado dos capítulos)
+    characters: [],
+    world: [],
+    quotes: [],
+    spotifyUrl: "",
+    createdAt: now,
+    updatedAt: now,
+    ...fields,
+  };
+}
+
+export function loadStories() {
+  storiesLoaded ||= store.loadStories().then((list) => {
+    stories = list.map((s) => storyDefaults(s));
+  }).catch((err) => {
+    storiesLoaded = null; // deixa tentar de novo
+    throw err;
+  });
+  return storiesLoaded;
+}
+
+export function subscribeStories(fn) {
+  storyListeners.add(fn);
+  return () => storyListeners.delete(fn);
+}
+
+// Na ordem da mesa.
+export function getStories() {
+  return [...stories].sort((a, b) => a.order - b.order || b.createdAt.localeCompare(a.createdAt));
+}
+
+export function getStory(id) {
+  return stories.find((s) => s.id === id) || null;
+}
+
+export async function addStory(fields) {
+  // Entra na frente das outras na mesa.
+  const order = stories.length ? Math.min(...stories.map((s) => s.order)) - 1 : 0;
+  const story = storyDefaults({ order, ...fields });
+  await store.putStory(story); // se der erro, nada muda na tela
+  stories = [...stories, story];
+  notifyStories();
+  return story;
+}
+
+// Otimista, como updateBook: muda na hora e desfaz se a gravação falhar.
+export async function updateStory(id, changes) {
+  const current = getStory(id);
+  if (!current) return null;
+  const story = { ...current, ...changes, updatedAt: new Date().toISOString() };
+  stories = stories.map((s) => (s.id === id ? story : s));
+  notifyStories();
+  try {
+    await store.putStory(story);
+  } catch (err) {
+    stories = stories.map((s) => (s.id === id && s === story ? current : s));
+    notifyStories();
+    throw err;
+  }
+  return story;
+}
+
+// Atenção: apaga a história E os capítulos dela. Só depois de confirmar.
+export async function deleteStory(id) {
+  await store.removeStory(id);
+  stories = stories.filter((s) => s.id !== id);
+  notifyStories();
+}
+
+// Gêneros já usados nas histórias (para sugerir nos chips).
+export function getAllGenres() {
+  const all = new Set();
+  stories.forEach((s) => s.genres.forEach((g) => all.add(g)));
+  return [...all].sort((a, b) => a.localeCompare(b, "pt-BR"));
+}
+
 // Biblioteca guardada neste navegador antes da nuvem (pode estar vazia).
 export async function readLocalLibrary() {
   return { books: await local.loadBooks(), settings: await local.loadSettings() };

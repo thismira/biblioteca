@@ -255,6 +255,27 @@ estiver pronto** — trabalhar sempre na branch `escritorio`.
   e a frase embaixo de "M’s Workspace". Fonte manuscrita: Caveat.
 - Texturas SVG com `stitchTiles` e o veio em 600×2400 (o de 600×600
   mostrava emenda).
+- Histórias (`db.js`, seção "Escritório"): `loadStories()` só na 1ª
+  entrada no escritório; `getStories/getStory/addStory/updateStory`
+  (otimista)/`deleteStory` (apaga capítulos junto, cascade);
+  `subscribeStories` separado do `subscribe` dos livros; `getAllGenres`.
+  Formato: `{ id, title, synopsis, status, genres, color, order,
+  chapterOrder, words, characters, world, quotes, spotifyUrl, createdAt,
+  updatedAt }`. História nova entra na frente (`order` menor).
+- Mesa (`office.js`): cadernos reaproveitados num `Map` (FLIP nos filtros
+  com `flipReorder`); a inclinação usa a propriedade CSS `rotate` (não
+  `transform`), senão o FLIP a apagaria. Filtros (≥ 2 histórias): status
+  com contagem + gênero, só na memória. "Nova história" pede o título
+  (`promptDialog`) e o caderno "cai" na mesa. `notebook.js`:
+  `paintNotebook()` (cor/inclinação/fitinha fixas pelo id; título longo
+  diminui a letra, nunca corta), `COVERS`, `nextCover()`.
+- Página da história (`story-page.js`, `#/historia/<id>[/<aba>]`): o
+  caderno cresce até virar a página e volta ao fechar. Esquerda: título e
+  sinopse (textareas que crescem; sinopse salva 800 ms após parar e no
+  blur, sem ser sobrescrita enquanto espera), gêneros (category-picker
+  com sugestões fixas), status (carimbos), cor da capa, números, "Apagar
+  história" (confirmDialog danger). Abas = divisórias à direita (no
+  celular viram uma faixa em cima); trocar de aba usa `replaceState`.
 - Banco: `supabase/schema-escritorio.sql` (já rodado): `stories`,
   `chapters` (FK com cascade) e bucket privado `escritorio` (pasta por
   usuária). Não usar `settings` para nada do escritório.

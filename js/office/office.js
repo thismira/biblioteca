@@ -1,12 +1,16 @@
 // O escritório (M’s Workspace): a sala onde ela guarda e escreve as próprias
 // histórias. Fica numa tela só dele — a biblioteca some e a mesa aparece.
 //
-// Endereços: #/escritorio (a mesa). Os próximos (#/historia/…) também
-// passam por aqui. O roteador de main.js só pergunta `isOfficeHash()` e
-// chama `enterOffice()` / `leaveOffice()`.
+// Endereços: #/escritorio (a mesa) e #/historia/<id>[/<aba>] (o caderno
+// aberto). O roteador de main.js só pergunta `isOfficeHash()` e chama
+// `enterOffice()` / `leaveOffice()`; daqui para dentro é tudo aqui.
 
+import * as db from "../data/db.js";
 import { done, reducedMotion } from "../ui/fly-book.js";
-import { toast } from "../ui/dialogs.js";
+import { flipReorder } from "../ui/flip.js";
+import { promptDialog, toast } from "../ui/dialogs.js";
+import { paintNotebook, nextCover } from "./notebook.js";
+import { createStoryPage } from "./story-page.js";
 
 const root = document.getElementById("escritorio");
 // O que pertence à biblioteca (some enquanto o escritório está aberto).
@@ -15,6 +19,12 @@ const library = [document.querySelector(".topo"), document.getElementById("app")
 let open = false;
 let enteredByClick = false; // veio pelo botão? então "← Biblioteca" = voltar
 let libraryScroll = 0;      // a biblioteca volta para onde estava
+let storyOpenedByClick = false;
+let clickedNotebook = null; // caderno clicado (a página da história cresce dele)
+
+// Filtros da mesa (só na memória): status e gênero. null = todos.
+let statusFilter = null;
+let genreFilter = null;
 
 export const isOfficeHash = (hash) => /^#\/(escritorio|historia)(\/|$)/.test(hash);
 export const isOfficeOpen = () => open;
@@ -30,7 +40,204 @@ function backToLibrary() {
   else location.hash = "#/";
 }
 
-// ---------- Transição: a sala desliza para o lado e a outra entra ----------
+// ---------- A mesa e a página da história (duas "telas" do escritório) ----------
+
+root.innerHTML = `
+  <div class="esc-luz" aria-hidden="true"></div>
+  <div class="esc-caixilho" aria-hidden="true"></div>
+  <div class="esc-mesa">
+    <header class="esc-barra">
+      <button class="etiqueta-papel" type="button" data-acao="biblioteca">← Biblioteca</button>
+      <div class="esc-titulo"><span class="washi" aria-hidden="true"></span><h1>M’s Workspace</h1></div>
+      <button class="etiqueta-papel dir" type="button" data-acao="importar">Trazer do Google Docs</button>
+    </header>
+    <div class="esc-filtros" role="group" aria-label="Filtrar histórias" hidden></div>
+    <div class="esc-cadernos"></div>
+    <p class="esc-nada" hidden>Nenhuma história com esse filtro.</p>
+    <div class="esc-obj esc-xicara" aria-hidden="true"><span class="pires"></span><span class="asa"></span><span class="boca"></span><span class="cafe"></span><span class="coracao"></span></div>
+    <div class="esc-obj esc-caneta" aria-hidden="true"><span class="corpo"></span><span class="clip"></span><span class="anel"></span><span class="bico"></span></div>
+    <div class="esc-obj esc-oculos" aria-hidden="true"><i></i><i></i><b></b></div>
+    <div class="esc-obj esc-clipe" style="left:210px;bottom:60px;--r:24deg" aria-hidden="true"></div>
+    <div class="esc-obj esc-clipe" style="left:240px;bottom:46px;--r:-12deg" aria-hidden="true"></div>
+  </div>
+  <div class="esc-historia" hidden></div>`;
+
+const deskEl = root.querySelector(".esc-mesa");
+const storyEl = root.querySelector(".esc-historia");
+const shelfEl = root.querySelector(".esc-cadernos");
+const filtersEl = root.querySelector(".esc-filtros");
+const notebooks = new Map(); // id -> botão-caderno (reaproveitados, para o FLIP)
+
+const newButton = document.createElement("button");
+newButton.type = "button";
+newButton.className = "caderno caderno-novo";
+newButton.dataset.acao = "nova";
+newButton.style.setProperty("--r", "4deg");
+newButton.innerHTML = `
+  <span class="caderno-folhas"></span><span class="caderno-capa"></span>
+  <span class="caderno-mais"><span>+</span>Nova história</span>`;
+
+const storyPage = createStoryPage(storyEl, {
+  onBack: backToDesk,
+  onDeleted: () => {
+    storyOpenedByClick = false;
+    history.replaceState(null, "", "#/escritorio");
+    routeOffice();
+  },
+});
+
+function visibleStories() {
+  return db.getStories().filter((s) =>
+    (!statusFilter || s.status === statusFilter) && (!genreFilter || s.genres.includes(genreFilter))
+  );
+}
+
+function renderFilters() {
+  const all = db.getStories();
+  filtersEl.hidden = all.length < 2;
+  if (filtersEl.hidden) return;
+  const genres = db.getAllGenres();
+  if (genreFilter && !genres.includes(genreFilter)) genreFilter = null;
+  const count = (st) => all.filter((s) => s.status === st).length;
+  filtersEl.innerHTML = `
+    <button type="button" data-filtro="" aria-pressed="${!statusFilter}">Todas</button>
+    ${db.STORY_STATUSES.filter(([v]) => count(v)).map(([v, t]) => `
+      <button type="button" data-filtro="${v}" data-status="${v}" aria-pressed="${statusFilter === v}"><span class="ponto"></span>${t} <small>${count(v)}</small></button>`).join("")}
+    ${genres.length ? `<select aria-label="Gênero"><option value="">Todos os gêneros</option>${genres.map(() => "<option></option>").join("")}</select>` : ""}`;
+  const select = filtersEl.querySelector("select");
+  if (select) {
+    // Nomes de gênero entram como texto (nunca como HTML).
+    [...select.options].slice(1).forEach((o, i) => (o.value = o.textContent = genres[i]));
+    select.value = genreFilter || "";
+  }
+}
+
+function renderDesk() {
+  renderFilters();
+  const list = visibleStories();
+  const ids = new Set(list.map((s) => s.id));
+  for (const [id, el] of notebooks) {
+    if (!ids.has(id)) {
+      el.remove();
+      notebooks.delete(id);
+    }
+  }
+  const elements = list.map((s) => {
+    const el = notebooks.get(s.id) || document.createElement("button");
+    notebooks.set(s.id, paintNotebook(el, s));
+    return el;
+  });
+  shelfEl.replaceChildren(newButton, ...elements);
+  root.querySelector(".esc-nada").hidden = list.length > 0 || db.getStories().length === 0;
+}
+
+const refilter = () => flipReorder(notebooks, renderDesk);
+
+filtersEl.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-filtro]");
+  if (!b) return;
+  statusFilter = b.dataset.filtro || null;
+  refilter();
+});
+filtersEl.addEventListener("change", (e) => {
+  genreFilter = e.target.value || null;
+  refilter();
+});
+
+async function createStory() {
+  const title = await promptDialog({
+    title: "Nova história",
+    label: "Título (dá para mudar depois)",
+    placeholder: "Ex.: Cartas para Lisboa",
+    confirmText: "Criar história",
+  });
+  if (title == null) return;
+  let story;
+  try {
+    story = await db.addStory({ title: title.trim().replace(/\s+/g, " ") || "Sem título", color: nextCover(db.getStories()) });
+  } catch (err) {
+    toast(err.message);
+    return;
+  }
+  // Se um filtro esconderia o caderno novo, os filtros saem.
+  statusFilter = genreFilter = null;
+  renderDesk();
+  const el = notebooks.get(story.id);
+  if (el && !reducedMotion()) {
+    // O caderno "cai" na mesa.
+    el.animate(
+      [{ transform: "translateY(-46px) scale(1.18)", opacity: 0 }, { transform: "none", opacity: 1 }],
+      { duration: 520, easing: "cubic-bezier(.3,1.35,.5,1)" }
+    );
+  }
+}
+
+// ---------- Abrir e fechar uma história ----------
+
+function openStory(id, notebook) {
+  clickedNotebook = notebook;
+  storyOpenedByClick = true;
+  location.hash = `#/historia/${id}`;
+}
+
+function backToDesk() {
+  if (storyOpenedByClick) history.back();
+  else {
+    history.replaceState(null, "", "#/escritorio");
+    routeOffice();
+  }
+}
+
+// FLIP de tamanho: o elemento parece começar no retângulo `from`.
+const fromRect = (from, to) => ({
+  transform: `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${from.width / to.width}, ${from.height / to.height})`,
+  opacity: 0.25,
+});
+
+async function showDesk() {
+  const previous = !storyEl.hidden ? storyPage.storyId : null;
+  const from = previous ? storyPage.book().getBoundingClientRect() : null;
+  storyEl.hidden = true;
+  deskEl.hidden = false;
+  renderDesk();
+  // O caderno aberto "fecha" de volta no lugar dele na mesa.
+  const target = previous && notebooks.get(previous);
+  if (!target || !from || reducedMotion()) return;
+  target.scrollIntoView({ block: "center" });
+  const to = target.getBoundingClientRect();
+  target.style.transformOrigin = "top left";
+  await done(target.animate([fromRect(from, to), { transform: "none", opacity: 1 }], { duration: 420, easing: "cubic-bezier(.2,.8,.2,1)" }));
+  target.style.transformOrigin = "";
+}
+
+async function showStory(id, tab) {
+  const from = clickedNotebook?.isConnected ? clickedNotebook.getBoundingClientRect() : null;
+  clickedNotebook = null;
+  const wasDesk = !deskEl.hidden;
+  deskEl.hidden = true;
+  storyEl.hidden = false;
+  storyPage.show(id, tab);
+  if (!wasDesk) return;
+  window.scrollTo(0, 0);
+  // O caderno da mesa "abre" e cresce até virar a página da história.
+  const book = storyPage.book();
+  const to = book.getBoundingClientRect();
+  if (!from || !to.width || reducedMotion()) return;
+  book.style.transformOrigin = "top left";
+  await done(book.animate([fromRect(from, to), { transform: "none", opacity: 1 }], { duration: 480, easing: "cubic-bezier(.2,.8,.2,1)" }));
+  book.style.transformOrigin = "";
+}
+
+// Mostra a mesa ou a história, conforme o endereço.
+function routeOffice() {
+  const match = location.hash.match(/^#\/historia\/([\w-]+)(?:\/(\w+))?$/);
+  if (match && db.getStory(match[1])) return showStory(match[1], match[2]);
+  if (match) history.replaceState(null, "", "#/escritorio"); // história que não existe mais
+  storyOpenedByClick = false;
+  return showDesk();
+}
+
+// ---------- Entrar e sair: a sala desliza para o lado e a outra entra ----------
 // dir = 1 (indo para o escritório, à direita) ou -1 (voltando).
 // `onSwap` roda no instante da troca (ex.: acertar a rolagem da página).
 async function slide(fromEls, toEls, dir, onSwap) {
@@ -54,13 +261,23 @@ async function slide(fromEls, toEls, dir, onSwap) {
   ))));
 }
 
+// Chamado a cada mudança de endereço dentro do escritório.
 export async function enterOffice() {
-  if (open) return;
+  // As histórias carregam (só na primeira vez) enquanto a sala desliza.
+  const loading = db.loadStories().catch((err) => {
+    console.error(err);
+    toast("Não consegui abrir suas histórias. Confira a internet e tente de novo.");
+  });
+  if (open) {
+    await loading;
+    return routeOffice();
+  }
   open = true;
   libraryScroll = window.scrollY;
-  renderDesk();
+  await loading; // (rápido) antes da troca: o endereço pode ser de uma história
   await slide(library, [root], 1, () => {
     document.body.classList.add("no-escritorio");
+    routeOffice();
     window.scrollTo(0, 0);
   });
 }
@@ -69,41 +286,21 @@ export async function leaveOffice() {
   if (!open) return;
   open = false;
   enteredByClick = false;
+  storyOpenedByClick = false;
   await slide([root], library, -1, () => {
     document.body.classList.remove("no-escritorio");
     window.scrollTo(0, libraryScroll);
   });
 }
 
-// ---------- A mesa ----------
-
-const DESK = `
-  <div class="esc-luz" aria-hidden="true"></div>
-  <div class="esc-caixilho" aria-hidden="true"></div>
-  <header class="esc-barra">
-    <button class="etiqueta-papel" type="button" data-acao="biblioteca">← Biblioteca</button>
-    <div class="esc-titulo"><span class="washi" aria-hidden="true"></span><h1>M’s Workspace</h1></div>
-    <button class="etiqueta-papel dir" type="button" data-acao="importar">Trazer do Google Docs</button>
-  </header>
-  <div class="esc-cadernos"></div>
-  <div class="esc-obj esc-xicara" aria-hidden="true"><span class="pires"></span><span class="asa"></span><span class="boca"></span><span class="cafe"></span><span class="coracao"></span></div>
-  <div class="esc-obj esc-caneta" aria-hidden="true"><span class="corpo"></span><span class="clip"></span><span class="anel"></span><span class="bico"></span></div>
-  <div class="esc-obj esc-oculos" aria-hidden="true"><i></i><i></i><b></b></div>
-  <div class="esc-obj esc-clipe" style="left:210px;bottom:60px;--r:24deg" aria-hidden="true"></div>
-  <div class="esc-obj esc-clipe" style="left:240px;bottom:46px;--r:-12deg" aria-hidden="true"></div>`;
-
-function renderDesk() {
-  if (!root.firstElementChild) root.innerHTML = DESK;
-  const desk = root.querySelector(".esc-cadernos");
-  desk.innerHTML = `
-    <button class="caderno caderno-novo" type="button" data-acao="nova" style="--r:4deg">
-      <span class="caderno-folhas"></span><span class="caderno-capa"></span>
-      <span class="caderno-mais"><span>+</span>Nova história</span>
-    </button>`;
-}
-
-root.addEventListener("click", (event) => {
+deskEl.addEventListener("click", (event) => {
+  const notebook = event.target.closest(".caderno[data-id]");
+  if (notebook) return openStory(notebook.dataset.id, notebook);
   const action = event.target.closest("[data-acao]")?.dataset.acao;
   if (action === "biblioteca") backToLibrary();
-  else if (action === "nova" || action === "importar") toast("Isso chega na próxima etapa ✨");
+  else if (action === "nova") createStory();
+  else if (action === "importar") toast("Isso chega numa próxima etapa ✨");
 });
+
+// Mudou alguma história (ex.: salvou na página dela): a mesa acompanha.
+db.subscribeStories(() => open && !deskEl.hidden && renderDesk());
