@@ -251,7 +251,8 @@ estiver pronto** — trabalhar sempre na branch `escritorio`.
   gênero na capa**), status = washi tape no canto (Ideia, Escrevendo,
   Editando, Pronta). Poucos objetos: xícara, caneta, óculos, clipes,
   post-it "Continuar escrevendo". Flores, eucalipto e polaroids foram
-  tirados a pedido (mesa "poluída"). Fonte manuscrita: Caveat.
+  tirados a pedido (mesa "poluída"), assim como o bilhete de mesa vazia
+  e a frase embaixo de "M’s Workspace". Fonte manuscrita: Caveat.
 - Texturas SVG com `stitchTiles` e o veio em 600×2400 (o de 600×600
   mostrava emenda).
 - Banco: `supabase/schema-escritorio.sql` (já rodado): `stories`,

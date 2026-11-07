@@ -88,12 +88,6 @@ body.no-escritorio { background: #E9D5BC; }
   line-height: 1;
   letter-spacing: 0.5px;
 }
-.esc-titulo small {
-  display: block;
-  margin-top: 4px;
-  font: 500 1.05rem var(--manuscrita);
-  color: var(--texto-suave);
-}
 .washi {
   position: absolute;
   height: 20px;
@@ -116,8 +110,6 @@ body.no-escritorio { background: #E9D5BC; }
   margin: 0 auto;
   padding: 54px 24px 120px;
 }
-.esc-cadernos:has(+ .esc-bilhete) { padding-bottom: 46px; }
-.esc-bilhete { margin-bottom: 120px; }
 
 .caderno {
   position: relative;
@@ -262,22 +254,6 @@ body.no-escritorio { background: #E9D5BC; }
 }
 .caderno-mais span { font: 500 3rem/1 var(--fonte-titulo); }
 
-/* Mesa vazia: um bilhete de boas-vindas */
-.esc-bilhete {
-  position: relative;
-  z-index: 2;
-  width: min(320px, calc(100vw - 48px));
-  margin: 0 auto;
-  padding: 22px 22px 18px;
-  transform: rotate(-1.5deg);
-  background: var(--papel);
-  background-image: repeating-linear-gradient(transparent 0 25px, #E8E2EC 25px 26px);
-  background-position: 0 14px;
-  font: 500 1.3rem/26px var(--manuscrita);
-  color: #6B4A55;
-  box-shadow: 1px 2px 2px rgba(0, 0, 0, 0.06), 7px 12px 18px rgba(74, 44, 53, 0.16);
-}
-.esc-bilhete .washi { top: -9px; left: 40px; transform: rotate(-4deg); --w: rgba(169, 186, 157, 0.8); }
 
 /* ---------- Objetos da mesa (só decoração) ---------- */
 .esc-obj { position: absolute; z-index: 1; pointer-events: none; }

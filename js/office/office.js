@@ -82,7 +82,7 @@ const DESK = `
   <div class="esc-caixilho" aria-hidden="true"></div>
   <header class="esc-barra">
     <button class="etiqueta-papel" type="button" data-acao="biblioteca">← Biblioteca</button>
-    <div class="esc-titulo"><span class="washi" aria-hidden="true"></span><h1>M’s Workspace</h1><small>onde as histórias nascem</small></div>
+    <div class="esc-titulo"><span class="washi" aria-hidden="true"></span><h1>M’s Workspace</h1></div>
     <button class="etiqueta-papel dir" type="button" data-acao="importar">Trazer do Google Docs</button>
   </header>
   <div class="esc-cadernos"></div>
@@ -100,11 +100,6 @@ function renderDesk() {
       <span class="caderno-folhas"></span><span class="caderno-capa"></span>
       <span class="caderno-mais"><span>+</span>Nova história</span>
     </button>`;
-  // Mesa vazia: um bilhete de boas-vindas embaixo do caderno em branco.
-  if (!root.querySelector(".esc-bilhete")) {
-    desk.insertAdjacentHTML("afterend", `
-      <p class="esc-bilhete"><span class="washi" aria-hidden="true"></span>Sua mesa está pronta ✨ Comece uma história nova ou traga as suas do Google Docs.</p>`);
-  }
 }
 
 root.addEventListener("click", (event) => {
