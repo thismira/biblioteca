@@ -236,6 +236,28 @@ soltar, lista de desejos com link para a Amazon UK e backup em JSON.
     (que é o atributo title do próprio formulário).
 - `js/utils/` — funções de cor e utilidades.
 
+## Escritório (parte 2 — em construção na branch `escritorio`)
+Sala nova para ela escrever as próprias histórias. Plano completo em
+`~/.claude/plans/` (parte 2). **Só vai para a `main`/site quando tudo
+estiver pronto** — trabalhar sempre na branch `escritorio`.
+- Entrada: botão "Go to workspace" (`#btn-escritorio`, só na sala).
+  `js/office/office.js`: `isOfficeHash()`, `enterOffice()`,
+  `leaveOffice()`; o roteador de `main.js` só delega `#/escritorio` e
+  `#/historia/…`. Transição: a biblioteca (`.topo` + `#app`) desliza e o
+  `#escritorio` entra; a rolagem da biblioteca é restaurada ao voltar.
+- Visual (`css/office.css`, aprovado pelo dono a partir do esboço B): mesa
+  de carvalho vista de cima, luz da janela no canto, cadernos de tecido
+  (costura, elástico, fitinha, etiqueta com título + palavras — **sem
+  gênero na capa**), status = washi tape no canto (Ideia, Escrevendo,
+  Editando, Pronta). Poucos objetos: xícara, caneta, óculos, clipes,
+  post-it "Continuar escrevendo". Flores, eucalipto e polaroids foram
+  tirados a pedido (mesa "poluída"). Fonte manuscrita: Caveat.
+- Texturas SVG com `stitchTiles` e o veio em 600×2400 (o de 600×600
+  mostrava emenda).
+- Banco: `supabase/schema-escritorio.sql` (já rodado): `stories`,
+  `chapters` (FK com cascade) e bucket privado `escritorio` (pasta por
+  usuária). Não usar `settings` para nada do escritório.
+
 ## Celular (até 600px de largura)
 - Cabeçalho mais baixo; na estante aberta "← Sala" e o nome na mesma linha
   e o filtro de nota numa faixa que rola para o lado (`room.css`).

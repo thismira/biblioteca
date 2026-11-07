@@ -23,6 +23,7 @@ import { ensureLogin } from "./ui/login.js";
 import { pickShelfBooks } from "./ui/shelf-books-picker.js";
 import { createSearch, matchesSearch } from "./ui/search.js";
 import { enableDragAndDrop } from "./ui/drag.js";
+import { isOfficeHash, isOfficeOpen, enterOffice, leaveOffice, goToOffice } from "./office/office.js";
 import { queueSpineColor, SPINE_COLOR_VERSION } from "./services/spine-color.js";
 
 // Gravação que falhou (ex.: sem internet): avisa sem travar a tela.
@@ -69,6 +70,12 @@ function parseHash() {
 }
 
 async function route() {
+  // O escritório é uma tela à parte: a biblioteca some enquanto ele está aberto.
+  if (isOfficeHash(location.hash)) {
+    if (isBookDetailOpen()) closeBookDetail();
+    return enterOffice();
+  }
+  if (isOfficeOpen()) await leaveOffice();
   const { bookId, shelfId } = parseHash();
   if (bookId) {
     const spine = clickedSpine;
@@ -251,6 +258,7 @@ async function openShelfView(id) {
   search.close();
   roomArea.hidden = true;
   emptyMessage.hidden = true;
+  $("btn-escritorio").hidden = true; // o escritório só se abre pela sala
   viewEl.hidden = false;
   renderView();
   viewEl.scrollIntoView({ block: "start" });
@@ -272,6 +280,7 @@ async function showRoom() {
   currentShelf = null;
   viewEl.hidden = true;
   roomArea.hidden = false;
+  $("btn-escritorio").hidden = false;
   readingShelf.render([]);
   shelf.render([]);
   wishlist.render([]);
@@ -487,6 +496,7 @@ $("btn-novo-desejo").addEventListener("click", () => openAddBook("", { destinati
 $("btn-sala").addEventListener("click", backToRoom);
 $("btn-adicionar").addEventListener("click", () => openAddBook());
 $("btn-backup").addEventListener("click", openBackup);
+$("btn-escritorio").addEventListener("click", goToOffice);
 
 // ---------- Cores das lombadas ----------
 // Livros com capa e sem cor extraída (ou cuja capa ou regra de extração
