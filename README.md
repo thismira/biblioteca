@@ -4,6 +4,11 @@ Uma biblioteca virtual: estantes com as lombadas dos livros, página de cada
 livro (status, progresso, nota, resenha, trechos, playlist), ordenação com
 animação, arrumação personalizada, lista de desejos e backup.
 
+E um **escritório** (botão "Go to workspace") para ela escrever as próprias
+histórias: cadernos na mesa, capítulos, editor no jeito do Google Docs,
+personagens (capa, álbum, traits, quotes, playlist, frases das músicas),
+worldbuilding, playlist e best quotes de cada história.
+
 Site estático (HTML, CSS e JavaScript puros), sem build e sem servidor
 próprio — funciona no GitHub Pages.
 
@@ -22,18 +27,38 @@ No celular (mesmo Wi-Fi), use `http://<IP do Mac>:8080`.
 
 ## Onde ficam os dados
 
-Os livros ficam salvos **no navegador de quem usa o site** (localStorage) —
-não no GitHub. Cada navegador/aparelho tem a sua própria biblioteca.
+Tudo fica na nuvem (**Supabase**), na conta dela, com login por e-mail e
+senha: aparece igual em qualquer aparelho em que ela entrar. Nada de dados
+dela fica no GitHub.
 
-- **Backup → Exportar backup** baixa um arquivo `.json` com tudo.
-- **Backup → Importar backup** restaura esse arquivo (pede confirmação e
-  baixa antes uma cópia do que existe).
-- **Backup → Importar do Goodreads** lê a planilha `.csv` do Goodreads ou as
-  páginas da lista de livros salvas pelo navegador.
+- Livros e configurações: tabelas `books` e `settings` (`supabase/schema.sql`).
+- Escritório: tabelas `stories` e `chapters` e as fotos no Storage (pasta
+  privada `escritorio`) — `supabase/schema-escritorio.sql`.
 
-Para levar a biblioteca para outro aparelho: exporte num, importe no outro.
-Guarde um backup de vez em quando — limpar os dados do navegador apaga os
-livros.
+Em **Conta e backup**:
+
+- **Exportar backup** baixa um arquivo `.json` com os livros, as estantes e as
+  histórias (com o texto de todos os capítulos; as fotos ficam na nuvem).
+- **Importar backup** restaura esse arquivo (pede confirmação e baixa antes
+  uma cópia do que existe). Histórias que não existem mais voltam; as que
+  existem não são tocadas.
+- **Importar do Goodreads** lê a planilha `.csv` do Goodreads ou as páginas
+  da lista de livros salvas pelo navegador.
+
+Guarde um backup de vez em quando, como segurança extra.
+
+## Escritório (as histórias dela)
+
+- **Trazer do Google Docs** (na mesa): no Google Docs, *Arquivo → Fazer
+  download → Microsoft Word (.docx)*; depois escolha o arquivo. Ele é lido no
+  próprio navegador (não é enviado a lugar nenhum) e aparece uma prévia para
+  escolher o que entra e como dividir em histórias e capítulos.
+- **Editor**: salva sozinho; sem internet, guarda o texto no aparelho e envia
+  quando a conexão volta. Se outro aparelho salvar o mesmo capítulo ao mesmo
+  tempo, nada é perdido: a versão de um deles vira um capítulo "(cópia deste
+  aparelho)".
+- **Baixar história**: na página da história, gera um arquivo Word com todos
+  os capítulos.
 
 ## Publicar no GitHub Pages
 
@@ -62,9 +87,7 @@ no site do GitHub).
 
 ### Primeiro acesso dela
 
-1. Aqui no computador: **Backup → Exportar backup**.
-2. Mande o arquivo `.json` para o celular dela (AirDrop, WhatsApp, e-mail…).
-3. No celular, abra o endereço do site → **Backup → Importar backup** e
-   escolha o arquivo.
-4. Dica: no Safari, **Compartilhar → Adicionar à Tela de Início** deixa o
+1. No celular, abra o endereço do site e entre com o e-mail e a senha da
+   conta dela (criada no painel do Supabase).
+2. Dica: no Safari, **Compartilhar → Adicionar à Tela de Início** deixa o
    site com ícone, como um app.

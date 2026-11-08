@@ -36,6 +36,8 @@ export function createStoryPage(root, { onBack, onDeleted, onOpenChapter, onOpen
         <div class="h-capa"><span class="caderno"></span></div>
         <textarea class="h-titulo" rows="1" maxlength="80" aria-label="Título da história" placeholder="Título da história"></textarea>
         <textarea class="h-sinopse" rows="2" aria-label="Sinopse" placeholder="Sobre o que é essa história? Uma ou duas frases…"></textarea>
+        <button class="link h-mais" type="button" data-acao="detalhes" aria-expanded="false">Gêneros, status e mais ▾</button>
+        <div class="h-detalhes">
         <div class="linha-rot">Gêneros</div>
         <div class="h-generos"></div>
         <div class="linha-rot" id="h-status-rot">Status</div>
@@ -49,6 +51,7 @@ export function createStoryPage(root, { onBack, onDeleted, onOpenChapter, onOpen
         <div class="numeros"></div>
         <button class="link h-baixar" type="button" data-acao="baixar">⬇ Baixar história (Word)</button>
         <button class="link perigo h-apagar" type="button" data-acao="apagar-historia">Apagar história</button>
+        </div>
       </section>
       <section class="esc-pag dir" aria-live="polite"><div class="aba-conteudo"></div></section>
       <nav class="divisorias" role="tablist" aria-label="Partes da história">
@@ -189,7 +192,17 @@ export function createStoryPage(root, { onBack, onDeleted, onOpenChapter, onOpen
       });
     }
     render();
+    requestAnimationFrame(refit);
   }
+
+  // Título e sinopse medem a altura de novo quando a página aparece ou a
+  // janela muda de largura (medidos escondidos, ficavam altos demais).
+  const refit = () => {
+    if (root.hidden || !storyId) return;
+    fit(titleInput);
+    fit(synopsis);
+  };
+  window.addEventListener("resize", refit);
 
   // ---------- Edição ----------
 
@@ -234,6 +247,12 @@ export function createStoryPage(root, { onBack, onDeleted, onOpenChapter, onOpen
     if (el.dataset.acao === "mesa") onBack();
     else if (el.dataset.acao === "apagar-historia") removeStory();
     else if (el.dataset.acao === "baixar") downloadStory(el);
+    else if (el.dataset.acao === "detalhes") {
+      // (só no celular: gêneros, status, cor… ficam recolhidos para as abas subirem)
+      const open = $(".h-detalhes").classList.toggle("aberto");
+      el.setAttribute("aria-expanded", String(open));
+      el.textContent = open ? "Gêneros, status e mais ▴" : "Gêneros, status e mais ▾";
+    }
     else if (el.dataset.status && el.closest(".selos")) save({ status: el.dataset.status });
     else if (el.dataset.cor) save({ color: el.dataset.cor });
     else if (el.dataset.aba) {

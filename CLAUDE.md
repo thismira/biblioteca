@@ -240,8 +240,19 @@ soltar, lista de desejos com link para a Amazon UK e backup em JSON.
 Sala nova para ela escrever as próprias histórias. Plano completo em
 `~/.claude/plans/` (parte 2). **Só vai para a `main`/site quando tudo
 estiver pronto** — trabalhar sempre na branch `escritorio`.
+- O código do escritório é carregado SÓ quando ela entra nele
+  (`import()` em `main.js`: `loadOffice`, `isOfficeHash` local): um erro no
+  escritório nunca impede a biblioteca de abrir (testado: a sala abre com
+  zero arquivos de `js/office/`).
+- Celular (página da história): gêneros/status/cor/números/baixar/apagar
+  ficam recolhidos em "Gêneros, status e mais ▾" (`.h-detalhes`) para as
+  abas subirem. Botões de texto do escritório com 36px de área de toque em
+  telas de toque. Nomes longos (cadernos, capítulos, polaroids, fichas)
+  quebram com hífen (`hyphens: auto`, html lang pt-BR), nunca no meio da
+  palavra sem aviso. `.h-titulo`/`.h-sinopse` com `min-height: 0` (o
+  base.css dá 90px às caixas de texto) e medidos de novo ao aparecer.
 - Entrada: botão "Go to workspace" (`#btn-escritorio`, só na sala).
-  `js/office/office.js`: `isOfficeHash()`, `enterOffice()`,
+  `js/office/office.js`: `enterOffice()`,
   `leaveOffice()`; o roteador de `main.js` só delega `#/escritorio` e
   `#/historia/…`. Transição: a biblioteca (`.topo` + `#app`) desliza e o
   `#escritorio` entra; a rolagem da biblioteca é restaurada ao voltar.

@@ -23,8 +23,16 @@ import { ensureLogin } from "./ui/login.js";
 import { pickShelfBooks } from "./ui/shelf-books-picker.js";
 import { createSearch, matchesSearch } from "./ui/search.js";
 import { enableDragAndDrop } from "./ui/drag.js";
-import { isOfficeHash, isOfficeOpen, enterOffice, leaveOffice, goToOffice } from "./office/office.js";
 import { queueSpineColor, SPINE_COLOR_VERSION } from "./services/spine-color.js";
+
+// O escritório (js/office/) só é carregado quando ela entra nele: assim um
+// problema no código do escritório nunca impede a biblioteca de abrir.
+const isOfficeHash = (hash) => /^#\/(escritorio|historia)(\/|$)/.test(hash);
+let officeModule = null;
+const loadOffice = () => (officeModule ||= import("./office/office.js").catch((err) => {
+  officeModule = null; // deixa tentar de novo
+  throw err;
+}));
 
 // Gravação que falhou (ex.: sem internet): avisa sem travar a tela.
 window.addEventListener("unhandledrejection", (event) => {
@@ -73,9 +81,18 @@ async function route() {
   // O escritório é uma tela à parte: a biblioteca some enquanto ele está aberto.
   if (isOfficeHash(location.hash)) {
     if (isBookDetailOpen()) closeBookDetail();
-    return enterOffice();
+    try {
+      return (await loadOffice()).enterOffice();
+    } catch (err) {
+      console.error(err);
+      toast("Não consegui abrir o escritório agora. Confira a internet e tente de novo.");
+      history.replaceState(null, "", "#/");
+    }
   }
-  if (isOfficeOpen()) await leaveOffice();
+  if (officeModule) {
+    const office = await officeModule.catch(() => null);
+    if (office?.isOfficeOpen()) await office.leaveOffice();
+  }
   const { bookId, shelfId } = parseHash();
   if (bookId) {
     const spine = clickedSpine;
@@ -496,7 +513,14 @@ $("btn-novo-desejo").addEventListener("click", () => openAddBook("", { destinati
 $("btn-sala").addEventListener("click", backToRoom);
 $("btn-adicionar").addEventListener("click", () => openAddBook());
 $("btn-backup").addEventListener("click", openBackup);
-$("btn-escritorio").addEventListener("click", goToOffice);
+$("btn-escritorio").addEventListener("click", async () => {
+  try {
+    (await loadOffice()).goToOffice();
+  } catch (err) {
+    console.error(err);
+    toast("Não consegui abrir o escritório agora. Confira a internet e tente de novo.");
+  }
+});
 
 // ---------- Cores das lombadas ----------
 // Livros com capa e sem cor extraída (ou cuja capa ou regra de extração

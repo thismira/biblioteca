@@ -202,7 +202,9 @@ body.no-escritorio { background: #E9D5BC; }
 .caderno-etiqueta b {
   display: block;
   font: 700 1.12rem/1.02 var(--fonte-titulo);
-  overflow-wrap: anywhere;
+  /* palavra longa quebra com hífen ("foras-teiros"), não no meio sem aviso */
+  hyphens: auto;
+  overflow-wrap: break-word;
 }
 .caderno-etiqueta small {
   display: block;
@@ -325,7 +327,7 @@ body.no-escritorio { background: #E9D5BC; }
   .esc-cadernos { gap: 30px 22px; padding: 36px 12px 80px; }
   .caderno { width: 132px; height: 180px; }
   .caderno-etiqueta { top: 36px; left: 21px; right: 30px; }
-  .caderno-etiqueta b { font-size: 1rem; }
+  .caderno-etiqueta b { font-size: 0.95rem; }
 }
 
 /* ---------- Botão "Go to workspace" na sala da biblioteca ---------- */
@@ -471,6 +473,7 @@ body.no-escritorio { background: #E9D5BC; }
   box-shadow: none;
 }
 .h-titulo { font: 600 2.4rem/1.05 var(--fonte-titulo); resize: none; overflow: hidden; }
+.h-titulo, .h-sinopse { min-height: 0; } /* crescem com o texto (o base.css dá 90px às caixas de texto) */
 .h-sinopse {
   margin: 10px 0 8px;
   resize: none;
@@ -622,7 +625,7 @@ body.no-escritorio { background: #E9D5BC; }
 }
 .cap-abrir:focus-visible { outline: 2px solid var(--acento); outline-offset: -2px; border-radius: 4px; }
 .cap-num { flex: none; min-width: 1.3em; font: 600 1.35rem/34px var(--manuscrita); color: var(--acento); }
-.cap-nome { min-width: 0; overflow-wrap: anywhere; } /* título longo quebra linha, nunca é cortado */
+.cap-nome { min-width: 0; hyphens: auto; overflow-wrap: break-word; } /* título longo quebra linha, nunca é cortado */
 .cap-pontos { flex: 1; min-width: 18px; align-self: flex-end; margin-bottom: 10px; border-bottom: 2px dotted #DCC9D0; }
 .cap-palavras { flex: none; font: 600 0.74rem/34px var(--fonte-texto); color: var(--texto-suave); white-space: nowrap; }
 .cap-acao {
@@ -816,7 +819,7 @@ body.no-escritorio { background: #E9D5BC; }
 }
 .polaroid-foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .polaroid-inicial { font: 600 3.2rem var(--fonte-titulo); color: rgba(74, 44, 53, 0.45); }
-.polaroid-nome { margin-top: 7px; font: 600 1.35rem/1.05 var(--manuscrita); overflow-wrap: anywhere; }
+.polaroid-nome { margin-top: 7px; font: 600 1.35rem/1.05 var(--manuscrita); hyphens: auto; overflow-wrap: break-word; max-width: 100%; }
 .polaroid-papel { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--texto-suave); }
 .polaroid-papel:empty, .polaroid-traits:empty { display: none; }
 .polaroid-traits { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; margin-top: 5px; }
@@ -1043,7 +1046,7 @@ dialog.album-visor::backdrop { background: transparent; }
 .ficha-mundo-cartao:focus-visible { outline: 3px solid var(--acento); outline-offset: 2px; }
 .fmc-imagem { flex: none; width: 54px; height: 54px; object-fit: cover; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15); background: #F3E6E9; }
 .fmc-texto { min-width: 0; }
-.fmc-texto b { display: block; font: 600 1.1rem/1.25 var(--fonte-titulo); overflow-wrap: anywhere; }
+.fmc-texto b { display: block; font: 600 1.1rem/1.25 var(--fonte-titulo); hyphens: auto; overflow-wrap: break-word; }
 .fmc-texto span { display: block; margin-top: 2px; font-size: 0.82rem; line-height: 22px; color: var(--texto-suave); }
 .fmc-texto span:empty { display: none; }
 .ficha-mundo-nova {
@@ -1109,3 +1112,26 @@ dialog.album-visor::backdrop { background: transparent; }
 .aba-quotes .quote-linha select.quote-capitulo { width: auto; max-width: 240px; padding: 6px 8px; }
 .h-baixar { display: block; margin-top: 22px; font-size: 0.85rem; }
 .h-baixar + .h-apagar { margin-top: 10px; }
+
+/* Telas de toque: botões de texto ("editar", "apagar", "renomear"…) com
+   área de toque maior (o visual não muda no computador). */
+@media (hover: none) {
+  .escritorio button.link {
+    min-height: 36px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+  .ms-acoes, .letra-acoes, .quote-acoes { gap: 16px; }
+}
+
+/* Celular: na página da história, gêneros/status/cor ficam recolhidos
+   ("Gêneros, status e mais ▾") para as abas (Manuscrito…) subirem. */
+.h-mais { display: none; }
+@media (max-width: 800px) {
+  .h-mais { display: block; margin: 6px 0 0; font-size: 0.9rem; }
+  .h-detalhes:not(.aberto) { display: none; }
+  .esc-pag.esq:has(.h-detalhes:not(.aberto)) { padding-bottom: 24px; }
+  .esc-pag.esq:has(.h-detalhes:not(.aberto)) .h-capa { display: none; }
+  .esc-aberto { min-height: 0; }
+  .esc-aberto .esc-pag { flex: none; }
+}
