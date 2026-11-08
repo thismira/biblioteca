@@ -2,8 +2,10 @@
 // histórias. Fica numa tela só dele — a biblioteca some e a mesa aparece.
 //
 // Endereços: #/escritorio (a mesa), #/historia/<id>[/<aba>] (o caderno
-// aberto) e #/historia/<id>/capitulo/<id> (o editor de escrita). O roteador de main.js só pergunta `isOfficeHash()` e chama
-// `enterOffice()` / `leaveOffice()`; daqui para dentro é tudo aqui.
+// aberto), #/historia/<id>/capitulo/<id> (o editor de escrita) e
+// #/historia/<id>/personagem/<id> (a página de um personagem). O roteador
+// de main.js só pergunta `isOfficeHash()` e chama `enterOffice()` /
+// `leaveOffice()`; daqui para dentro é tudo aqui.
 
 import * as db from "../data/db.js";
 import { done, reducedMotion } from "../ui/fly-book.js";
@@ -13,6 +15,7 @@ import { paintNotebook, nextCover } from "./notebook.js";
 import { createStoryPage } from "./story-page.js";
 import { createEditor } from "./editor.js";
 import { importFromDocs } from "./story-import.js";
+import { createCharacterPage } from "./character-page.js";
 
 const root = document.getElementById("escritorio");
 // O que pertence à biblioteca (some enquanto o escritório está aberto).
@@ -25,6 +28,7 @@ let storyOpenedByClick = false;
 let clickedNotebook = null; // caderno clicado (a página da história cresce dele)
 let chapterOpenedByClick = false; // "← Manuscrito" = voltar
 let openAtEnd = false;            // "Continuar escrevendo": cursor no fim do texto
+let characterOpenedByClick = false; // "← Personagens" = voltar
 
 // Filtros da mesa (só na memória): status e gênero. null = todos.
 let statusFilter = null;
@@ -66,11 +70,13 @@ root.innerHTML = `
     <button class="esc-postit" type="button" data-acao="continuar" hidden><small>Continuar escrevendo</small><b></b><span></span></button>
   </div>
   <div class="esc-historia" hidden></div>
-  <div class="esc-editor" hidden></div>`;
+  <div class="esc-editor" hidden></div>
+  <div class="esc-personagem" hidden></div>`;
 
 const deskEl = root.querySelector(".esc-mesa");
 const storyEl = root.querySelector(".esc-historia");
 const editorEl = root.querySelector(".esc-editor");
+const characterEl = root.querySelector(".esc-personagem");
 const postit = root.querySelector(".esc-postit");
 const shelfEl = root.querySelector(".esc-cadernos");
 const filtersEl = root.querySelector(".esc-filtros");
@@ -93,6 +99,12 @@ const storyPage = createStoryPage(storyEl, {
     routeOffice();
   },
   onOpenChapter: (id, chapterId) => openChapter(id, chapterId),
+  onOpenCharacter: (id, characterId) => openCharacter(id, characterId),
+});
+
+const characterPage = createCharacterPage(characterEl, {
+  onBack: backToCharacters,
+  onDeleted: backToCharacters,
 });
 
 const editor = createEditor(editorEl, {
@@ -261,6 +273,7 @@ function backToStory() {
 
 async function showEditor(id, chapterId) {
   const wasHidden = editorEl.hidden;
+  closeCharacter();
   deskEl.hidden = true;
   storyEl.hidden = true;
   editorEl.hidden = false;
@@ -286,6 +299,49 @@ function closeEditor() {
   editor.close().catch((err) => toast(err.message));
 }
 
+// ---------- Abrir e fechar um personagem ----------
+
+function openCharacter(id, characterId) {
+  characterOpenedByClick = true;
+  location.hash = `#/historia/${id}/personagem/${characterId}`;
+}
+
+function backToCharacters(id) {
+  if (characterOpenedByClick) history.back();
+  else {
+    history.replaceState(null, "", `#/historia/${id}/personagens`);
+    routeOffice();
+  }
+}
+
+function showCharacter(id, characterId) {
+  if (!characterPage.show(id, characterId)) {
+    // personagem que não existe mais: volta ao quadro
+    history.replaceState(null, "", `#/historia/${id}/personagens`);
+    return routeOffice();
+  }
+  const wasHidden = characterEl.hidden;
+  closeEditor();
+  deskEl.hidden = true;
+  storyEl.hidden = true;
+  characterEl.hidden = false;
+  if (!wasHidden) return;
+  window.scrollTo(0, 0);
+  if (!reducedMotion()) {
+    characterPage.book().animate(
+      [{ transform: "translateY(28px) scale(.98)", opacity: 0 }, { transform: "none", opacity: 1 }],
+      { duration: 380, easing: "cubic-bezier(.2,.8,.2,1)" }
+    );
+  }
+}
+
+function closeCharacter() {
+  if (characterEl.hidden) return;
+  characterOpenedByClick = false;
+  characterEl.hidden = true;
+  characterPage.stop(); // a música do player para
+}
+
 // FLIP de tamanho: o elemento parece começar no retângulo `from`.
 const fromRect = (from, to) => ({
   transform: `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${from.width / to.width}, ${from.height / to.height})`,
@@ -294,6 +350,7 @@ const fromRect = (from, to) => ({
 
 async function showDesk() {
   closeEditor();
+  closeCharacter();
   const previous = !storyEl.hidden ? storyPage.storyId : null;
   const from = previous ? storyPage.book().getBoundingClientRect() : null;
   storyEl.hidden = true;
@@ -310,8 +367,9 @@ async function showDesk() {
 }
 
 async function showStory(id, tab) {
-  if (!editorEl.hidden) {
+  if (!editorEl.hidden || !characterEl.hidden) {
     closeEditor();
+    closeCharacter();
     window.scrollTo(0, 0);
   }
   const from = clickedNotebook?.isConnected ? clickedNotebook.getBoundingClientRect() : null;
@@ -335,6 +393,8 @@ async function showStory(id, tab) {
 function routeOffice() {
   const chapter = location.hash.match(/^#\/historia\/([\w-]+)\/capitulo\/([\w-]+)$/);
   if (chapter && db.getStory(chapter[1])) return showEditor(chapter[1], chapter[2]);
+  const person = location.hash.match(/^#\/historia\/([\w-]+)\/personagem\/([\w-]+)$/);
+  if (person && db.getStory(person[1])) return showCharacter(person[1], person[2]);
   const match = location.hash.match(/^#\/historia\/([\w-]+)(?:\/(\w+))?$/);
   if (match && db.getStory(match[1])) return showStory(match[1], match[2]);
   if (match) history.replaceState(null, "", "#/escritorio"); // história que não existe mais
@@ -393,6 +453,7 @@ export async function leaveOffice() {
   enteredByClick = false;
   storyOpenedByClick = false;
   closeEditor();
+  closeCharacter();
   await slide([root], library, -1, () => {
     document.body.classList.remove("no-escritorio");
     window.scrollTo(0, libraryScroll);

@@ -1,6 +1,10 @@
 // Trechos favoritos de um livro, com o número da página.
 // Fica dentro da página do livro; `getBook()` devolve o livro aberto e
 // `save(changes)` grava as mudanças.
+// No escritório (história e personagens) usa `chapters()` — lista
+// [{ id, title }] — e cada trecho guarda o capítulo (`chapterId`) no lugar
+// da página. `photo: false` tira o botão de fotografar. Ids únicos: pode
+// haver mais de um na mesma tela.
 //
 // Os trechos aparecem num carrossel: um por vez, com setas, bolinhas,
 // arrastar com o dedo (pointer events) e setas do teclado.
@@ -17,14 +21,39 @@ const MAX_DOTS = 12;       // com mais trechos que isso, só mostra "3 de 20"
 
 const newId = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
 
-// Em ordem de página, como no livro; trechos sem página vão para o fim.
-function sorted(quotes) {
+// Em ordem de página (ou de capítulo), como no livro; sem página vão para o fim.
+function sorted(quotes, position) {
   return [...quotes].sort(
-    (a, b) => (a.page ?? Infinity) - (b.page ?? Infinity) || (a.createdAt || "").localeCompare(b.createdAt || "")
+    (a, b) => position(a) - position(b) || (a.createdAt || "").localeCompare(b.createdAt || "")
   );
 }
 
-export function createQuotes(container, { getBook, save }) {
+let count = 0;
+
+export function createQuotes(container, {
+  getBook,
+  save,
+  chapters = null,
+  photo = true,
+  emptyText = "Nenhum trecho guardado ainda. Aquela frase que você sublinhou mora aqui. ✨",
+  placeholder = "Copie aqui o trecho que você amou…",
+}) {
+  const uid = ++count;
+  const byChapter = Boolean(chapters);
+  // posição para ordenar: página, ou a ordem do capítulo no manuscrito
+  const position = (q) => {
+    if (!byChapter) return q.page ?? Infinity;
+    const i = chapters().findIndex((c) => c.id === q.chapterId);
+    return i < 0 ? Infinity : i;
+  };
+  const chapterTitle = (id) => {
+    const list = chapters();
+    const i = list.findIndex((c) => c.id === id);
+    return i < 0 ? "" : `${i + 1}. ${list[i].title || "Sem título"}`;
+  };
+  const sourceField = (id) => byChapter
+    ? `<label for="${id}">Capítulo</label><select id="${id}" class="quote-capitulo"></select>`
+    : `<label for="${id}">Página</label><input id="${id}" type="number" min="1" inputmode="numeric">`;
   container.innerHTML = `
     <div class="quotes-carrossel">
       <button class="carrossel-seta" type="button" data-ir="-1" aria-label="Trecho anterior">‹</button>
@@ -37,15 +66,14 @@ export function createQuotes(container, { getBook, save }) {
         <span class="carrossel-contagem" aria-live="polite"></span>
       </div>
     </div>
-    <p class="quotes-vazio">Nenhum trecho guardado ainda. Aquela frase que você sublinhou mora aqui. ✨</p>
+    <p class="quotes-vazio"></p>
     <form class="quote-novo">
-      <label for="quote-texto">Novo trecho</label>
-      <textarea id="quote-texto" required placeholder="Copie aqui o trecho que você amou…"></textarea>
+      <label for="quote-texto-${uid}">Novo trecho</label>
+      <textarea id="quote-texto-${uid}" required></textarea>
       <div class="quote-linha">
-        <label for="quote-pagina">Página</label>
-        <input id="quote-pagina" type="number" min="1" inputmode="numeric">
+        ${sourceField(`quote-pagina-${uid}`)}
         <button class="botao" type="submit">Guardar trecho</button>
-        <button class="botao secundario" type="button" data-acao="fotografar">📷 Fotografar trecho</button>
+        ${photo ? `<button class="botao secundario" type="button" data-acao="fotografar">📷 Fotografar trecho</button>` : ""}
       </div>
       <p class="quote-leitura" aria-live="polite"></p>
     </form>`;
@@ -57,8 +85,16 @@ export function createQuotes(container, { getBook, save }) {
   const countEl = container.querySelector(".carrossel-contagem");
   const form = container.querySelector(".quote-novo");
   const textInput = form.querySelector("textarea");
-  const pageInput = form.querySelector("input");
+  const pageInput = form.querySelector("input, select");
   const photoButton = form.querySelector('[data-acao="fotografar"]');
+  container.querySelector(".quotes-vazio").textContent = emptyText;
+  textInput.placeholder = placeholder;
+
+  // Opções de capítulo (o manuscrito pode ter mudado).
+  function fillChapters(select, selected = "") {
+    select.replaceChildren(new Option("Sem capítulo", ""), ...chapters().map((c, i) => new Option(`${i + 1}. ${c.title || "Sem título"}`, c.id)));
+    select.value = chapters().some((c) => c.id === selected) ? selected : "";
+  }
   const readingStatus = form.querySelector(".quote-leitura");
   let editingId = null; // trecho em edição (só um por vez)
   let index = 0;        // trecho que está aparecendo no carrossel
@@ -66,17 +102,18 @@ export function createQuotes(container, { getBook, save }) {
 
   // Página digitada -> número dentro do livro, ou null se vazia.
   function readPage(value) {
-    if (value === "") return null;
+    if (value === "" || byChapter) return null;
     const pages = getBook().pages;
     return Math.max(1, Math.min(Number(value), pages || Infinity));
   }
 
   // Desenha os trechos. `showId`: vai direto para esse trecho.
   function render({ showId = null } = {}) {
-    const quotes = sorted(getBook()?.quotes || []);
+    const quotes = sorted(getBook()?.quotes || [], position);
     container.querySelector(".quotes-vazio").hidden = quotes.length > 0;
     carousel.hidden = quotes.length === 0;
-    pageInput.max = getBook()?.pages || "";
+    if (byChapter) fillChapters(pageInput, pageInput.value);
+    else pageInput.max = getBook()?.pages || "";
     const currentId = showId || slides[index]?.dataset.id;
     slides = quotes.map((q) => {
       const li = document.createElement("li");
@@ -200,7 +237,8 @@ export function createQuotes(container, { getBook, save }) {
         </span>
       </div>`;
     li.querySelector("blockquote").textContent = q.text;
-    li.querySelector(".quote-pagina").textContent = q.page ? `— p. ${q.page}` : "";
+    const source = byChapter ? chapterTitle(q.chapterId) : q.page ? `p. ${q.page}` : "";
+    li.querySelector(".quote-pagina").textContent = source ? `— ${source}` : "";
     return li;
   }
 
@@ -210,13 +248,16 @@ export function createQuotes(container, { getBook, save }) {
     li.innerHTML = `
       <textarea aria-label="Texto do trecho"></textarea>
       <div class="quote-linha">
-        <label>Página <input type="number" min="1" inputmode="numeric"></label>
+        ${byChapter ? `<label>Capítulo <select class="quote-capitulo"></select></label>` : `<label>Página <input type="number" min="1" inputmode="numeric"></label>`}
         <button class="botao" type="button" data-acao="salvar">Salvar</button>
         <button class="botao secundario" type="button" data-acao="cancelar">Cancelar</button>
       </div>`;
     li.querySelector("textarea").value = q.text;
-    li.querySelector("input").value = q.page ?? "";
-    li.querySelector("input").max = getBook().pages || "";
+    if (byChapter) fillChapters(li.querySelector("select"), q.chapterId);
+    else {
+      li.querySelector("input").value = q.page ?? "";
+      li.querySelector("input").max = getBook().pages || "";
+    }
     return li;
   }
 
@@ -224,7 +265,9 @@ export function createQuotes(container, { getBook, save }) {
     event.preventDefault();
     const text = textInput.value.trim();
     if (!text) return;
-    const quote = { id: newId(), text, page: readPage(pageInput.value), createdAt: new Date().toISOString() };
+    const quote = byChapter
+      ? { id: newId(), text, chapterId: pageInput.value || null, createdAt: new Date().toISOString() }
+      : { id: newId(), text, page: readPage(pageInput.value), createdAt: new Date().toISOString() };
     await save({ quotes: [...(getBook().quotes || []), quote] });
     textInput.value = "";
     pageInput.value = "";
@@ -237,7 +280,7 @@ export function createQuotes(container, { getBook, save }) {
   });
 
   // Foto do trecho: ela recorta o trecho na foto e o site lê o texto.
-  photoButton.addEventListener("click", async () => {
+  photoButton?.addEventListener("click", async () => {
     const piece = await pickAndCrop({
       title: "Foto do trecho",
       hint: "Ajuste o retângulo em volta só do trecho que você quer guardar.",
@@ -290,9 +333,11 @@ export function createQuotes(container, { getBook, save }) {
     } else if (action === "salvar") {
       const text = li.querySelector("textarea").value.trim();
       if (!text) return;
-      const page = readPage(li.querySelector("input").value);
+      const changes = byChapter
+        ? { text, chapterId: li.querySelector("select").value || null }
+        : { text, page: readPage(li.querySelector("input").value) };
       editingId = null;
-      await save({ quotes: quotes.map((q) => (q.id === quote.id ? { ...q, text, page } : q)) });
+      await save({ quotes: quotes.map((q) => (q.id === quote.id ? { ...q, ...changes } : q)) });
       render({ showId: quote.id }); // se a página mudou, a ordem muda: segue o trecho
     } else if (action === "apagar") {
       const preview = quote.text.length > 80 ? quote.text.slice(0, 80) + "…" : quote.text;

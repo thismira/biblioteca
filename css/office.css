@@ -760,3 +760,138 @@ body.no-escritorio { background: #E9D5BC; }
   .imp-capitulos, .imp-dup { margin-left: 4px; }
   .imp-trecho { margin-left: 4px; }
 }
+
+/* ====================== PERSONAGENS ======================
+   Quadro de linho com polaroids presas por alfinetes. */
+.quadro {
+  margin: 0 -14px;
+  padding: 26px 18px 30px;
+  border-radius: 8px;
+  background-color: #E6DCCB;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.07) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(120, 90, 60, 0.06) 0 1px, transparent 1px 3px),
+    var(--trama);
+  box-shadow: inset 0 0 0 6px #D9C9AE, inset 0 0 18px rgba(90, 60, 30, 0.18);
+}
+.quadro-fotos { display: flex; flex-wrap: wrap; gap: 26px 20px; justify-content: center; }
+.polaroid {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 132px;
+  padding: 9px 9px 10px;
+  border: 0;
+  background: #FFFDF9;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1), 4px 8px 14px rgba(74, 44, 53, 0.2);
+  color: var(--texto);
+  text-align: center;
+  cursor: pointer;
+  rotate: var(--r, 0deg);
+  transition: rotate 0.2s, translate 0.2s, scale 0.2s, box-shadow 0.2s;
+  touch-action: pan-y;
+}
+.polaroid:hover { rotate: 0deg; translate: 0 -4px; scale: 1.04; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1), 6px 14px 22px rgba(74, 44, 53, 0.26); }
+.polaroid:focus-visible { outline: 3px solid var(--acento); outline-offset: 3px; }
+.polaroid-alfinete {
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #F4B8C8, #B5506F 60%, #7B2E46);
+  box-shadow: 1px 3px 4px rgba(0, 0, 0, 0.3);
+  z-index: 1;
+}
+.polaroid-foto {
+  display: grid;
+  place-items: center;
+  width: 114px;
+  height: 140px;
+  overflow: hidden;
+  background: var(--fundo, #F3D3DB);
+}
+.polaroid-foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.polaroid-inicial { font: 600 3.2rem var(--fonte-titulo); color: rgba(74, 44, 53, 0.45); }
+.polaroid-nome { margin-top: 7px; font: 600 1.35rem/1.05 var(--manuscrita); overflow-wrap: anywhere; }
+.polaroid-papel { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--texto-suave); }
+.polaroid-papel:empty, .polaroid-traits:empty { display: none; }
+.polaroid-traits { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; margin-top: 5px; }
+.polaroid-traits span { padding: 1px 6px; border-radius: 999px; background: #F5E7EA; font-size: 0.64rem; font-weight: 700; color: var(--acento); }
+.polaroid-novo { background: rgba(255, 253, 249, 0.6); box-shadow: inset 0 0 0 2px rgba(158, 74, 101, 0.25); rotate: 2deg; }
+.polaroid-novo .polaroid-foto { background: transparent; border: 2px dashed rgba(158, 74, 101, 0.35); }
+.polaroid-novo .polaroid-foto span { font: 600 2.6rem var(--fonte-titulo); color: var(--acento); }
+.polaroid-novo .polaroid-nome { font-size: 1.2rem; color: var(--acento); }
+/* arrastar */
+.polaroid.polaroid-vaga { opacity: 0.3; outline: 2px dashed var(--acento); outline-offset: 2px; }
+.polaroid-fantasma {
+  --manuscrita: "Caveat", cursive;
+  position: fixed;
+  z-index: 60;
+  margin: 0;
+  pointer-events: none;
+  box-shadow: 10px 18px 26px rgba(40, 10, 20, 0.35);
+}
+
+/* ---------- Página do personagem ---------- */
+.ficha-fotos { display: grid; justify-items: center; gap: 8px; margin-bottom: 14px; }
+.ficha-polaroid {
+  position: relative;
+  padding: 12px 12px 34px;
+  background: #FFFDF9;
+  rotate: -2deg;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1), 6px 12px 22px rgba(74, 44, 53, 0.2);
+}
+.ficha-foto { display: grid; place-items: center; width: 210px; height: 260px; overflow: hidden; background: #F3D3DB; }
+.ficha-foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ficha-foto .polaroid-inicial { font-size: 5rem; }
+.ficha-miniaturas { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.ficha-mini { position: relative; width: 58px; height: 72px; overflow: hidden; border: 3px solid #FFFDF9; box-shadow: 0 2px 6px rgba(74, 44, 53, 0.2); background: #F3D3DB; }
+.ficha-mini.capa { outline: 2px solid var(--acento); }
+.ficha-mini img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ficha-mini-acoes { position: absolute; inset: auto 0 0; display: flex; justify-content: space-between; opacity: 0; transition: opacity 0.15s; }
+.ficha-mini:hover .ficha-mini-acoes, .ficha-mini:focus-within .ficha-mini-acoes { opacity: 1; }
+@media (hover: none) { .ficha-mini-acoes { opacity: 1; } }
+.ficha-mini-acoes button { width: 24px; height: 24px; margin-left: auto; padding: 0; border: 0; border-radius: 50%; background: rgba(255, 253, 249, 0.92); color: var(--acento); font-size: 0.95rem; cursor: pointer; }
+.ficha-mini-acoes button[data-acao="capa"] { margin: 0 auto 0 0; }
+.ficha-enviando { margin: 0; font-size: 0.82rem; font-weight: 700; color: var(--texto-suave); }
+.ficha-enviando:empty { display: none; }
+.ficha-nome { text-align: center; }
+.ficha-papel { width: 100%; max-width: 280px; padding: 6px 10px; font-size: 0.92rem; }
+.ficha-traits .categoria-nova { max-width: 220px; padding: 6px 12px; font-size: 0.85rem; }
+.ficha .esc-pag.esq .h-apagar { display: block; margin-top: 26px; }
+.ficha-dir .aba-titulo { margin-top: 26px; }
+.ficha-dir .aba-titulo:first-child { margin-top: 0; }
+.esc-pag.dir.ficha-dir { background-image: none; } /* sem pautas: tem carrossel, player e cartões */
+.quote-linha select.quote-capitulo { width: auto; max-width: 240px; padding: 6px 8px; }
+
+/* frases das músicas: cartõezinhos escritos à mão */
+.letras { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 12px; }
+.letra {
+  position: relative;
+  padding: 14px 16px 10px;
+  background: #FFF8E6;
+  border-radius: 3px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 3px 6px 12px rgba(74, 44, 53, 0.1);
+}
+.letra:nth-child(odd) { rotate: -0.6deg; }
+.letra:nth-child(even) { rotate: 0.5deg; }
+.letra blockquote { margin: 0; white-space: pre-line; font: 500 1.4rem/28px var(--manuscrita); color: #5B3A44; background: repeating-linear-gradient(transparent 0 27px, #EADFC6 27px 28px); }
+.letra-rodape { display: flex; justify-content: space-between; gap: 10px; margin-top: 6px; font-size: 0.8rem; }
+.letra-musica { font-weight: 700; color: var(--texto-suave); }
+.letra-acoes { display: flex; gap: 10px; opacity: 0; transition: opacity 0.15s; }
+.letra:hover .letra-acoes, .letra:focus-within .letra-acoes { opacity: 1; }
+@media (hover: none) { .letra-acoes { opacity: 1; } }
+.letra.editando { rotate: 0deg; }
+.letra textarea, .letra-nova textarea { width: 100%; min-height: 60px; }
+.letra-linha { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.letra-linha input { flex: 1 1 130px; min-width: 0; }
+@media (max-width: 600px) {
+  .quadro { margin: 0 -8px; padding: 22px 8px 24px; }
+  .quadro-fotos { gap: 22px 12px; }
+  .polaroid { width: 124px; }
+  .polaroid-foto { width: 106px; height: 130px; }
+}

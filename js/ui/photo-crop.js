@@ -1,7 +1,8 @@
 // Editor de recorte de foto: ela escolhe/tira uma foto e ajusta um
 // retângulo em volta da parte que interessa (uma lombada, um trecho).
 // O arrastar usa pointer events: funciona com mouse e com o dedo.
-// Usado pela foto da lombada (spine-photo.js) e pela foto de trecho (quotes.js).
+// Usado pela foto da lombada (spine-photo.js), pela foto de trecho (quotes.js)
+// e pelas fotos dos personagens do escritório (office/photos.js).
 
 const MIN_BOX = 16; // tamanho mínimo do retângulo (px na tela)
 
@@ -14,6 +15,12 @@ const START_BOX = {
     return { x: (w - bw) / 2, y: (h - bh) / 2, w: bw, h: bh };
   },
   trecho: (w, h) => ({ x: w * 0.08, y: h * 0.25, w: w * 0.84, h: h * 0.5 }),
+  // foto de personagem: em pé, 3 × 4
+  retrato: (w, h) => {
+    const bh = Math.min(h * 0.86, (w * 0.86) / 0.75);
+    const bw = bh * 0.75;
+    return { x: (w - bw) / 2, y: (h - bh) / 2, w: bw, h: bh };
+  },
 };
 
 // Abre o seletor de arquivo e depois o editor. Devolve um <canvas> com a

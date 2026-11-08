@@ -8,6 +8,7 @@ import { createCategoryPicker } from "../ui/category-picker.js";
 import { confirmDialog, toast } from "../ui/dialogs.js";
 import { COVERS, paintNotebook } from "./notebook.js";
 import { createChapterList } from "./chapters.js";
+import { createCharacterBoard } from "./characters.js";
 
 export const TABS = [
   ["manuscrito", "Manuscrito", "#FCF7EF"],
@@ -22,7 +23,7 @@ const SYNOPSIS_DELAY = 800; // ms sem digitar para salvar a sinopse
 
 const plural = (n, one, many) => `${n.toLocaleString("pt-BR")} ${n === 1 ? one : many}`;
 
-export function createStoryPage(root, { onBack, onDeleted, onOpenChapter }) {
+export function createStoryPage(root, { onBack, onDeleted, onOpenChapter, onOpenCharacter }) {
   root.innerHTML = `
     <header class="esc-barra">
       <button class="etiqueta-papel" type="button" data-acao="mesa">← Mesa</button>
@@ -59,6 +60,7 @@ export function createStoryPage(root, { onBack, onDeleted, onOpenChapter }) {
   let synopsisTimer = null;
 
   const chapterList = createChapterList({ onOpen: (id, chapterId) => onOpenChapter(id, chapterId) });
+  const characterBoard = createCharacterBoard({ onOpen: (id, characterId) => onOpenCharacter(id, characterId) });
 
   const story = () => db.getStory(storyId);
   const save = (changes) =>
@@ -111,6 +113,11 @@ export function createStoryPage(root, { onBack, onDeleted, onOpenChapter }) {
     if (tab === "manuscrito") {
       if (box.firstElementChild !== chapterList.el) box.replaceChildren(chapterList.el);
       chapterList.show(storyId);
+      return;
+    }
+    if (tab === "personagens") {
+      if (box.firstElementChild !== characterBoard.el) box.replaceChildren(characterBoard.el);
+      characterBoard.show(storyId);
       return;
     }
     const name = TABS.find(([v]) => v === tab)[1];

@@ -287,7 +287,10 @@ function storyDefaults(fields) {
 
 export function loadStories() {
   storiesLoaded ||= store.loadStories().then((list) => {
-    stories = list.map((s) => storyDefaults(s));
+    stories = list.map((s) => {
+      const story = storyDefaults(s);
+      return { ...story, characters: story.characters.map((c) => characterDefaults(c)) };
+    });
   }).catch((err) => {
     storiesLoaded = null; // deixa tentar de novo
     throw err;
@@ -338,7 +341,9 @@ export async function updateStory(id, changes) {
 
 // Atenção: apaga a história E os capítulos dela. Só depois de confirmar.
 export async function deleteStory(id) {
+  const photos = (getStory(id)?.characters || []).flatMap((c) => c.photos.map((p) => p.path));
   await store.removeStory(id);
+  removePhotosQuietly(photos);
   stories = stories.filter((s) => s.id !== id);
   (chapterLists.get(id) || []).forEach((c) => {
     fullChapters.delete(c.id);
@@ -496,6 +501,109 @@ export async function renameChapter(storyId, id, title) {
     fullChapters.delete(id);
     return saveChapter(storyId, { id, title });
   }
+}
+
+// ---------- Escritório: personagens ----------
+// Ficam dentro da história (`story.characters`, na ordem do quadro).
+// Fotos no Storage: `photos: [{ path, w, h }]`, a primeira é a da polaroid.
+
+function characterDefaults(fields) {
+  const now = new Date().toISOString();
+  return {
+    id: newId(),
+    name: "",
+    role: "",
+    about: "",
+    traits: [],
+    photos: [],
+    quotes: [],     // { id, text, chapterId, createdAt }
+    spotifyUrl: "",
+    lyrics: [],     // { id, text, song, artist, createdAt }
+    createdAt: now,
+    updatedAt: now,
+    ...fields,
+  };
+}
+
+export const getCharacter = (storyId, id) =>
+  getStory(storyId)?.characters.find((c) => c.id === id) || null;
+
+export async function addCharacter(storyId, fields) {
+  const character = characterDefaults(fields);
+  await updateStory(storyId, { characters: [...getStory(storyId).characters, character] });
+  return character;
+}
+
+export function updateCharacter(storyId, id, changes) {
+  const story = getStory(storyId);
+  const characters = story.characters.map((c) =>
+    c.id === id ? { ...c, ...changes, updatedAt: new Date().toISOString() } : c
+  );
+  return updateStory(storyId, { characters });
+}
+
+// Nova ordem do quadro (depois de arrastar).
+export function moveCharacters(storyId, ids) {
+  const byId = new Map(getStory(storyId).characters.map((c) => [c.id, c]));
+  const characters = ids.map((id) => byId.get(id)).filter(Boolean);
+  // (algum que não estava na lista vai para o fim: nunca some)
+  getStory(storyId).characters.forEach((c) => !ids.includes(c.id) && characters.push(c));
+  return updateStory(storyId, { characters });
+}
+
+// Atenção: apaga o personagem e as fotos dele. Só depois de confirmar.
+export async function deleteCharacter(storyId, id) {
+  const character = getCharacter(storyId, id);
+  await updateStory(storyId, { characters: getStory(storyId).characters.filter((c) => c.id !== id) });
+  removePhotosQuietly(character?.photos.map((p) => p.path) || []);
+}
+
+// Fotos que ninguém usa mais: tenta apagar; se falhar, só ocupa espaço.
+function removePhotosQuietly(paths) {
+  if (!paths.length) return;
+  store.removePhotos(paths).catch((err) => console.error("Fotos não apagadas:", err));
+  paths.forEach((p) => photoLinks.delete(p));
+}
+
+export async function addCharacterPhoto(storyId, id, { blob, w, h }) {
+  const path = `${storyId}/${id}/${newId()}.jpg`;
+  await store.uploadPhoto(path, blob);
+  try {
+    const character = getCharacter(storyId, id);
+    await updateCharacter(storyId, id, { photos: [...character.photos, { path, w, h }] });
+  } catch (err) {
+    removePhotosQuietly([path]);
+    throw err;
+  }
+  return path;
+}
+
+// Atenção: apaga a foto. Só depois de confirmar.
+export async function removeCharacterPhoto(storyId, id, path) {
+  const character = getCharacter(storyId, id);
+  await updateCharacter(storyId, id, { photos: character.photos.filter((p) => p.path !== path) });
+  removePhotosQuietly([path]);
+}
+
+// Traits já usados em qualquer história (para sugerir nos chips).
+export function getAllTraits() {
+  const all = new Set();
+  stories.forEach((s) => s.characters.forEach((c) => c.traits.forEach((t) => all.add(t))));
+  return [...all].sort((a, b) => a.localeCompare(b, "pt-BR"));
+}
+
+// Links temporários das fotos (6 h), guardados na memória e renovados
+// antes de vencer. Devolve { caminho: link }.
+const PHOTO_LINK_SECONDS = 6 * 3600;
+const photoLinks = new Map(); // caminho → { url, until }
+export async function getPhotoUrls(paths) {
+  const now = Date.now();
+  const missing = paths.filter((p) => !(photoLinks.get(p)?.until > now + 10 * 60 * 1000));
+  if (missing.length) {
+    const urls = await store.photoUrls(missing, PHOTO_LINK_SECONDS);
+    for (const [p, url] of Object.entries(urls)) photoLinks.set(p, { url, until: now + PHOTO_LINK_SECONDS * 1000 });
+  }
+  return Object.fromEntries(paths.filter((p) => photoLinks.has(p)).map((p) => [p, photoLinks.get(p).url]));
 }
 
 // ---------- Importação (Trazer do Google Docs) ----------

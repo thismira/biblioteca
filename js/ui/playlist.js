@@ -1,10 +1,19 @@
-// Playlist do livro: ela cola um link do Spotify e o player aparece
-// embutido. Fica dentro da página do livro.
+// Playlist: ela cola um link do Spotify e o player aparece embutido.
+// Usada na página do livro e no escritório (história e personagens).
+// Pode haver mais de uma na mesma tela (ids únicos).
 
 import { parseSpotify, isShortLink } from "../services/spotify.js";
 import { confirmDialog } from "./dialogs.js";
 
-export function createPlaylist(container, { getBook, save }) {
+let count = 0;
+
+export function createPlaylist(container, {
+  getBook,
+  save,
+  frameTitle = "Playlist do livro no Spotify",
+  removeMessage = "O link do Spotify deste livro será apagado (a playlist continua existindo no Spotify).",
+}) {
+  const inputId = `playlist-link-${++count}`;
   container.innerHTML = `
     <div class="playlist-player"></div>
     <div class="playlist-acoes">
@@ -12,9 +21,9 @@ export function createPlaylist(container, { getBook, save }) {
       <button class="link" type="button" data-acao="remover">remover</button>
     </div>
     <form class="playlist-form">
-      <label for="playlist-link">Link do Spotify</label>
+      <label for="${inputId}">Link do Spotify</label>
       <div class="playlist-linha">
-        <input id="playlist-link" type="text" inputmode="url" autocomplete="off" placeholder="https://open.spotify.com/playlist/…">
+        <input id="${inputId}" type="text" inputmode="url" autocomplete="off" placeholder="https://open.spotify.com/playlist/…">
         <button class="botao" type="submit">Salvar</button>
       </div>
       <p class="playlist-erro" aria-live="polite"></p>
@@ -37,9 +46,10 @@ export function createPlaylist(container, { getBook, save }) {
   function showPlayer(spotify) {
     const frame = player.querySelector("iframe");
     if (frame?.dataset.src === spotify.embedUrl) return;
-    player.innerHTML = `<iframe title="Playlist do livro no Spotify" loading="lazy"
+    player.innerHTML = `<iframe loading="lazy"
       allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>`;
     const iframe = player.querySelector("iframe");
+    iframe.title = frameTitle;
     iframe.dataset.src = spotify.embedUrl;
     iframe.height = spotify.height;
     iframe.src = spotify.embedUrl;
@@ -81,7 +91,7 @@ export function createPlaylist(container, { getBook, save }) {
     } else if (action === "remover") {
       const ok = await confirmDialog({
         title: "Remover a playlist?",
-        message: "O link do Spotify deste livro será apagado (a playlist continua existindo no Spotify).",
+        message: removeMessage,
         confirmText: "Sim, remover",
         danger: true,
       });

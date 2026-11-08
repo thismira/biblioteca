@@ -198,3 +198,30 @@ export async function putChapters(list) {
   }
   await send();
 }
+
+// ---------- Escritório: fotos (Storage) ----------
+// Bucket PRIVADO `escritorio`; cada pessoa só alcança a própria pasta
+// ("<id da pessoa>/…", regras em schema-escritorio.sql). Os caminhos
+// guardados nas histórias não têm o id da pessoa: ele é somado aqui.
+const BUCKET = "escritorio";
+const fullPath = (uid, path) => `${uid}/${path}`;
+
+export async function uploadPhoto(path, blob) {
+  const uid = await userId();
+  check(await supabase.storage.from(BUCKET).upload(fullPath(uid, path), blob, { contentType: blob.type || "image/jpeg", upsert: false }));
+}
+
+export async function removePhotos(paths) {
+  if (!paths.length) return;
+  const uid = await userId();
+  check(await supabase.storage.from(BUCKET).remove(paths.map((p) => fullPath(uid, p))));
+}
+
+// Links temporários para mostrar as fotos: { caminho: link }.
+export async function photoUrls(paths, seconds) {
+  if (!paths.length) return {};
+  const uid = await userId();
+  const res = await supabase.storage.from(BUCKET).createSignedUrls(paths.map((p) => fullPath(uid, p)), seconds);
+  check(res);
+  return Object.fromEntries(res.data.map((d, i) => [paths[i], d.signedUrl]).filter(([, url]) => url));
+}

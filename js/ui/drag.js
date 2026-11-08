@@ -22,7 +22,8 @@ const DROP_MS = 220;        // duração do encaixe ao soltar
 // `renderOrder(ids)`: redesenha a estante na ordem dada.
 // `onDrop(id, prevId, nextId, changed)`: livro solto entre `prevId` e `nextId`.
 // Para outras listas (ex.: capítulos do escritório): `item` e `row` são os
-// seletores do item e da "prateleira" (row: null = a lista toda é uma fileira),
+// seletores do item e da "prateleira" (row: null = a lista toda é uma fileira;
+// row: "auto" = grade que quebra linha, as linhas são achadas pelos itens),
 // `axis: "y"` para lista de cima para baixo, `ghostClass`/`slotClass` mudam o
 // visual da cópia e da vaga.
 export function enableDragAndDrop({
@@ -111,16 +112,27 @@ export function enableDragAndDrop({
       return { left: r.left, right: r.right, top: r.top + sy, bottom: r.bottom + sy, width: r.width };
     };
     shifting.forEach((a) => a.pause());
-    const rows = rowSelector ? [...container.querySelectorAll(rowSelector)] : [container];
-    drag.rows = rows.map((row) => ({
-      ...rect(row),
-      spines: [...row.querySelectorAll(item)].map((el) => {
-        // posição sem o deslocamento da animação
-        const r = rect(el);
-        const t = new DOMMatrixReadOnly(getComputedStyle(el).transform);
-        return { id: el.dataset.id, ...r, left: r.left - t.m41, right: r.right - t.m41, top: r.top - t.m42, bottom: r.bottom - t.m42 };
-      }),
-    }));
+    // posição sem o deslocamento da animação
+    const place = (el) => {
+      const r = rect(el);
+      const t = new DOMMatrixReadOnly(getComputedStyle(el).transform);
+      return { id: el.dataset.id, ...r, left: r.left - t.m41, right: r.right - t.m41, top: r.top - t.m42, bottom: r.bottom - t.m42 };
+    };
+    if (rowSelector === "auto") {
+      // Grade que quebra linha (ex.: polaroids): as "prateleiras" são as
+      // linhas formadas pelos próprios itens.
+      drag.rows = [];
+      for (const s of [...container.querySelectorAll(item)].map(place)) {
+        const row = drag.rows.find((r) => Math.abs(r.top - s.top) < 20);
+        if (row) {
+          row.spines.push(s);
+          row.bottom = Math.max(row.bottom, s.bottom);
+        } else drag.rows.push({ top: s.top, bottom: s.bottom, spines: [s] });
+      }
+    } else {
+      const rows = rowSelector ? [...container.querySelectorAll(rowSelector)] : [container];
+      drag.rows = rows.map((row) => ({ ...rect(row), spines: [...row.querySelectorAll(item)].map(place) }));
+    }
     shifting.forEach((a) => a.play());
   }
 

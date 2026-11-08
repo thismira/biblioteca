@@ -369,6 +369,31 @@ estiver pronto** — trabalhar sempre na branch `escritorio`.
   frente da mesa, status "escrevendo", palavras não contam como "hoje")
   e `db.appendChapters`; `store.putChapters` em lotes de ~800 KB.
   Testado com .docx gerados no navegador (com e sem estilos).
+- Personagens (aba, `characters.js`): quadro de linho com polaroids
+  (alfinete, inclinação/cor fixas pelo id, foto ou inicial, nome em
+  Caveat, papel, até 3 traits); arrastar muda a ordem (`drag.js` com
+  `row: "auto"` = grade). "+ Novo personagem" pede o nome e abre a página.
+- Página do personagem (`character-page.js`, `#/historia/<id>/personagem/<id>`,
+  tela `.esc-personagem` em office.js): fotos (polaroid grande +
+  miniaturas, ★ usar na polaroid, × apagar com confirmação), nome, papel
+  (datalist de sugestões), traits (category-picker, `db.getAllTraits`),
+  "Sobre" (salva 800 ms após parar); direita: quotes (`createQuotes` com
+  `chapters`), playlist (`createPlaylist`) e frases das músicas (cartões;
+  `lyrics`). Formato em `characterDefaults` (db.js): `{ id, name, role,
+  about, traits, photos: [{ path, w, h }], quotes: [{ id, text, chapterId }],
+  spotifyUrl, lyrics: [{ id, text, song, artist }] }`.
+- Fotos: `photos.js` (`pickPortrait`: recorte formato "retrato" + reduz a
+  900px JPEG). Storage privado `escritorio`, caminho guardado SEM o id da
+  pessoa (`<storyId>/<characterId>/<id>.jpg`; o store soma o `uid/`).
+  Mostrar = `db.getPhotoUrls()` (links temporários de 6 h, guardados na
+  memória). Sem o link, o servidor recusa (testado). Apagar personagem,
+  foto ou história também apaga os arquivos (`removePhotosQuietly`).
+- `createQuotes` e `createPlaylist` agora têm ids únicos (vários na mesma
+  tela) e opções: quotes `chapters`, `photo`, `emptyText`, `placeholder`;
+  playlist `frameTitle`, `removeMessage`. Na página do livro nada muda.
+- Testes no preview com abas em segundo plano: o navegador adia eventos
+  (`close` de dialog, teclado). Trazer a aba de teste para a frente quando
+  o painel estiver escondido (e devolver a aba do dono no fim).
 - Banco: `supabase/schema-escritorio.sql` (já rodado): `stories`,
   `chapters` (FK com cascade) e bucket privado `escritorio` (pasta por
   usuária). Não usar `settings` para nada do escritório.
