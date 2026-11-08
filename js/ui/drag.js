@@ -21,22 +21,30 @@ const DROP_MS = 220;        // duração do encaixe ao soltar
 // `onStart()`: chamado quando o arraste começa (ex.: mudar para Personalizado).
 // `renderOrder(ids)`: redesenha a estante na ordem dada.
 // `onDrop(id, prevId, nextId, changed)`: livro solto entre `prevId` e `nextId`.
-export function enableDragAndDrop({ container, canDrag, onStart, renderOrder, onDrop }) {
+// Para outras listas (ex.: capítulos do escritório): `item` e `row` são os
+// seletores do item e da "prateleira" (row: null = a lista toda é uma fileira),
+// `axis: "y"` para lista de cima para baixo, `ghostClass`/`slotClass` mudam o
+// visual da cópia e da vaga.
+export function enableDragAndDrop({
+  container, canDrag, onStart, renderOrder, onDrop,
+  item = ".lombada", row: rowSelector = ".prateleira", axis = "x",
+  ghostClass = "lombada-fantasma", slotClass = "lombada-vaga",
+}) {
   let press = null; // ponteiro apertado, ainda sem arrastar
   let drag = null;  // arraste em andamento
   let suppressClick = false;
   let scrollFrame = null;
   const shifting = new Set(); // animações dos livros abrindo espaço
 
-  const spines = () => [...container.querySelectorAll(".lombada")];
+  const spines = () => [...container.querySelectorAll(item)];
   const currentOrder = () => spines().map((el) => el.dataset.id);
 
   // ---------- Começar ----------
 
   container.addEventListener("pointerdown", (event) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
-    const el = event.target.closest(".lombada");
-    if (!el || !canDrag()) return;
+    const el = event.target.closest(item);
+    if (!el || !container.contains(el) || !canDrag()) return;
     press = { el, x: event.clientX, y: event.clientY, id: event.pointerId, type: event.pointerType };
     if (event.pointerType !== "mouse") {
       press.timer = setTimeout(() => press && begin(press.x, press.y), TOUCH_HOLD);
@@ -55,12 +63,13 @@ export function enableDragAndDrop({ container, canDrag, onStart, renderOrder, on
     const rect = el.getBoundingClientRect();
     const ghost = el.cloneNode(true);
     ghost.removeAttribute("data-id");
-    ghost.classList.add("lombada-fantasma");
+    ghost.classList.add(ghostClass);
+    if (axis === "y") ghost.style.width = el.offsetWidth + "px"; // item de lista: mesma largura
     Object.assign(ghost.style, { left: rect.left + "px", top: rect.top + "px" });
     document.body.appendChild(ghost);
     ghost.animate([{ transform: "none" }, { transform: "rotate(-4deg) scale(1.06)" }], { duration: 150, fill: "forwards" });
 
-    el.classList.add("lombada-vaga");
+    el.classList.add(slotClass);
     document.body.classList.add("arrastando-livro");
     navigator.vibrate?.(15); // um "tique" no celular
 
@@ -102,9 +111,10 @@ export function enableDragAndDrop({ container, canDrag, onStart, renderOrder, on
       return { left: r.left, right: r.right, top: r.top + sy, bottom: r.bottom + sy, width: r.width };
     };
     shifting.forEach((a) => a.pause());
-    drag.rows = [...container.querySelectorAll(".prateleira")].map((row) => ({
+    const rows = rowSelector ? [...container.querySelectorAll(rowSelector)] : [container];
+    drag.rows = rows.map((row) => ({
       ...rect(row),
-      spines: [...row.querySelectorAll(".lombada")].map((el) => {
+      spines: [...row.querySelectorAll(item)].map((el) => {
         // posição sem o deslocamento da animação
         const r = rect(el);
         const t = new DOMMatrixReadOnly(getComputedStyle(el).transform);
@@ -130,8 +140,11 @@ export function enableDragAndDrop({ container, canDrag, onStart, renderOrder, on
     }
     const others = drag.order.filter((id) => id !== drag.id);
     const inRow = row.spines.filter((s) => s.id !== drag.id);
-    // Antes do primeiro livro cujo meio fica à direita do ponteiro.
-    const before = inRow.find((s) => x < s.left + s.width / 2);
+    // Antes do primeiro livro cujo meio fica à direita do ponteiro
+    // (numa lista vertical: abaixo do ponteiro).
+    const before = axis === "y"
+      ? inRow.find((s) => y < (s.top + s.bottom) / 2)
+      : inRow.find((s) => x < s.left + s.width / 2);
     let index;
     if (before) index = others.indexOf(before.id);
     else if (inRow.length) index = others.indexOf(inRow[inRow.length - 1].id) + 1;
@@ -200,7 +213,7 @@ export function enableDragAndDrop({ container, canDrag, onStart, renderOrder, on
     );
     const finish = () => {
       ghost.remove();
-      el.classList.remove("lombada-vaga");
+      el.classList.remove(slotClass);
     };
     animation.finished.then(finish, finish);
     setTimeout(finish, DROP_MS + 150); // garantia, se o navegador não terminar a animação

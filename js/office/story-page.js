@@ -7,6 +7,7 @@ import * as db from "../data/db.js";
 import { createCategoryPicker } from "../ui/category-picker.js";
 import { confirmDialog, toast } from "../ui/dialogs.js";
 import { COVERS, paintNotebook } from "./notebook.js";
+import { createChapterList } from "./chapters.js";
 
 export const TABS = [
   ["manuscrito", "Manuscrito", "#FCF7EF"],
@@ -21,7 +22,7 @@ const SYNOPSIS_DELAY = 800; // ms sem digitar para salvar a sinopse
 
 const plural = (n, one, many) => `${n.toLocaleString("pt-BR")} ${n === 1 ? one : many}`;
 
-export function createStoryPage(root, { onBack, onDeleted }) {
+export function createStoryPage(root, { onBack, onDeleted, onOpenChapter }) {
   root.innerHTML = `
     <header class="esc-barra">
       <button class="etiqueta-papel" type="button" data-acao="mesa">← Mesa</button>
@@ -42,7 +43,7 @@ export function createStoryPage(root, { onBack, onDeleted }) {
           ${COVERS.map(([c]) => `<button type="button" role="radio" data-cor="${c}" style="--c:${c}" aria-label="Cor ${c}"></button>`).join("")}
         </div>
         <div class="numeros"></div>
-        <button class="link perigo h-apagar" type="button" data-acao="apagar">Apagar história</button>
+        <button class="link perigo h-apagar" type="button" data-acao="apagar-historia">Apagar história</button>
       </section>
       <section class="esc-pag dir" aria-live="polite"><div class="aba-conteudo"></div></section>
       <nav class="divisorias" role="tablist" aria-label="Partes da história">
@@ -56,6 +57,8 @@ export function createStoryPage(root, { onBack, onDeleted }) {
   let storyId = null;
   let tab = "manuscrito";
   let synopsisTimer = null;
+
+  const chapterList = createChapterList({ onOpen: (id, chapterId) => onOpenChapter(id, chapterId) });
 
   const story = () => db.getStory(storyId);
   const save = (changes) =>
@@ -101,9 +104,15 @@ export function createStoryPage(root, { onBack, onDeleted }) {
     });
   }
 
-  // O conteúdo de cada aba chega nas próximas etapas.
+  // Manuscrito: a lista de capítulos. As outras abas chegam nas próximas etapas.
   function renderTab() {
     renderTabs();
+    const box = $(".aba-conteudo");
+    if (tab === "manuscrito") {
+      if (box.firstElementChild !== chapterList.el) box.replaceChildren(chapterList.el);
+      chapterList.show(storyId);
+      return;
+    }
     const name = TABS.find(([v]) => v === tab)[1];
     $(".aba-conteudo").innerHTML = `<h2 class="aba-titulo"></h2><p class="aba-em-breve">Em construção ✨</p>`;
     $(".aba-titulo").textContent = name;
@@ -164,10 +173,13 @@ export function createStoryPage(root, { onBack, onDeleted }) {
   });
 
   root.addEventListener("click", async (event) => {
+    // Cliques dentro da aba aberta são da própria aba (ex.: apagar um
+    // capítulo nunca pode chegar aqui e virar "apagar a história").
+    if (event.target.closest(".aba-conteudo")) return;
     const el = event.target.closest("[data-acao], [data-status], [data-cor], [data-aba]");
     if (!el || !storyId) return;
     if (el.dataset.acao === "mesa") onBack();
-    else if (el.dataset.acao === "apagar") removeStory();
+    else if (el.dataset.acao === "apagar-historia") removeStory();
     else if (el.dataset.status && el.closest(".selos")) save({ status: el.dataset.status });
     else if (el.dataset.cor) save({ color: el.dataset.cor });
     else if (el.dataset.aba) {

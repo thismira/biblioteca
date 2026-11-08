@@ -450,8 +450,8 @@ body.no-escritorio { background: #E9D5BC; }
 .h-capa { position: absolute; right: 30px; bottom: 26px; rotate: 6deg; }
 .h-capa .caderno { display: block; width: 84px; height: 114px; rotate: 0deg; cursor: default; pointer-events: none; }
 .h-capa .caderno-etiqueta { top: 22px; left: 15px; right: 20px; padding: 6px 3px; }
-.h-capa .caderno-etiqueta b { font-size: 0.74rem; }
-.h-capa .caderno[data-longo] .caderno-etiqueta b { font-size: 0.6rem; }
+.h-capa .caderno-etiqueta b { font-size: 0.66rem; overflow-wrap: normal; }
+.h-capa .caderno[data-longo] .caderno-etiqueta b { font-size: 0.56rem; }
 .h-capa .caderno-elastico { right: 12px; width: 5px; }
 .h-capa .caderno-etiqueta small,
 .h-capa .caderno-fitinha { display: none; }
@@ -577,4 +577,110 @@ body.no-escritorio { background: #E9D5BC; }
   .divisorias button[aria-selected="true"] { box-shadow: inset 0 -3px 0 var(--acento); }
   .h-titulo { font-size: 1.9rem; }
   .h-capa { right: 18px; bottom: 18px; }
+}
+
+/* ====================== MANUSCRITO (lista de capítulos) ======================
+   Um sumário escrito nas linhas da página (cada capítulo ocupa uma linha). */
+.cap-aviso:empty { display: none; }
+.cap-aviso { margin: 0; font: 500 1.3rem/34px var(--manuscrita); color: var(--texto-suave); }
+.capitulos { margin: 0; padding: 0; list-style: none; }
+.capitulo {
+  display: flex;
+  align-items: flex-start;
+  min-height: 34px;
+  margin: 0 -8px 0 -22px;
+  padding: 0 4px 0 2px;
+  border-radius: 6px;
+  touch-action: pan-y;
+}
+.capitulo:hover,
+.capitulo:focus-within { background: rgba(255, 209, 220, 0.28); }
+.cap-alca {
+  flex: none;
+  width: 18px;
+  font: 700 0.7rem/34px var(--fonte-texto);
+  letter-spacing: -2px;
+  color: var(--texto-suave);
+  opacity: 0;
+  cursor: grab;
+}
+.capitulo:hover .cap-alca { opacity: 0.6; }
+.cap-abrir {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--texto);
+  font: 600 1.15rem/34px var(--fonte-titulo);
+  text-align: left;
+  cursor: pointer;
+}
+.cap-abrir:focus-visible { outline: 2px solid var(--acento); outline-offset: -2px; border-radius: 4px; }
+.cap-num { flex: none; min-width: 1.3em; font: 600 1.35rem/34px var(--manuscrita); color: var(--acento); }
+.cap-nome { min-width: 0; overflow-wrap: anywhere; } /* título longo quebra linha, nunca é cortado */
+.cap-pontos { flex: 1; min-width: 18px; align-self: flex-end; margin-bottom: 10px; border-bottom: 2px dotted #DCC9D0; }
+.cap-palavras { flex: none; font: 600 0.74rem/34px var(--fonte-texto); color: var(--texto-suave); white-space: nowrap; }
+.cap-acao {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  margin-top: 2px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--texto-suave);
+  font-size: 1rem;
+  cursor: pointer;
+  opacity: 0;
+}
+.cap-acao[data-acao="apagar"] { font-size: 1.3rem; }
+.capitulo:hover .cap-acao,
+.capitulo:focus-within .cap-acao { opacity: 1; }
+.cap-acao:hover { background: rgba(158, 74, 101, 0.12); color: var(--acento); }
+.cap-acao[data-acao="apagar"]:hover { color: #A33A3A; }
+/* telas de toque: botões sempre visíveis (não existe "passar o mouse") */
+@media (hover: none) {
+  .cap-acao { opacity: 0.7; }
+  .cap-alca { display: none; }
+  .capitulo { margin-left: -4px; }
+}
+.cap-novo {
+  display: block;
+  margin: 0;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  font: 600 1.35rem/34px var(--manuscrita);
+  color: var(--acento);
+  cursor: pointer;
+}
+.cap-novo:hover { text-decoration: underline wavy rgba(158, 74, 101, 0.45); text-underline-offset: 5px; }
+
+/* arrastar: a vaga e a cópia "na mão" (a cópia fica no <body>, fora do escritório) */
+.capitulo.capitulo-vaga { opacity: 0.35; outline: 2px dashed var(--acento); outline-offset: -2px; background: none; }
+.capitulo-fantasma {
+  --papel: #FCF7EF;
+  --manuscrita: "Caveat", cursive;
+  position: fixed;
+  z-index: 60;
+  margin: 0;
+  list-style: none;
+  pointer-events: none;
+  background: var(--papel);
+  box-shadow: 6px 12px 22px rgba(74, 44, 53, 0.28);
+}
+.capitulo-fantasma .cap-acao { opacity: 0; }
+
+/* Celular: pautas alinhadas ao padding menor; sem pontinhos-guia (o título
+   quebra linha e eles ficariam soltos) */
+@media (max-width: 800px) {
+  .esc-pag.dir { background-position: 0 73px; }
+}
+@media (max-width: 600px) {
+  .cap-pontos { visibility: hidden; min-width: 6px; }
 }

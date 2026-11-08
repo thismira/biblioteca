@@ -127,3 +127,38 @@ export async function removeStory(id) {
     check(await supabase.from("stories").delete().eq("user_id", uid).eq("id", id));
   });
 }
+
+// ---------- Escritório: capítulos ----------
+// O texto de cada capítulo é uma linha da tabela `chapters`. A lista do
+// manuscrito pede só título e palavras (sem baixar os textos).
+
+export async function loadChapterList(storyId) {
+  const res = await supabase.from("chapters")
+    .select("id, title:data->>title, words:data->words, updatedAt:data->>updatedAt")
+    .eq("story_id", storyId);
+  check(res);
+  return res.data.map((r) => ({ id: r.id, title: r.title || "", words: Number(r.words) || 0, updatedAt: r.updatedAt || "" }));
+}
+
+export async function loadChapter(id) {
+  const res = await supabase.from("chapters").select("data").eq("id", id).maybeSingle();
+  check(res);
+  return res.data?.data || null;
+}
+
+export async function putChapter(chapter) {
+  return enqueue(`capitulo:${chapter.id}`, async () => {
+    const uid = await userId();
+    check(await supabase.from("chapters").upsert(
+      { ...row(uid, chapter), story_id: chapter.storyId },
+      { onConflict: "user_id,id" }
+    ));
+  });
+}
+
+export async function removeChapter(id) {
+  return enqueue(`capitulo:${id}`, async () => {
+    const uid = await userId();
+    check(await supabase.from("chapters").delete().eq("user_id", uid).eq("id", id));
+  });
+}

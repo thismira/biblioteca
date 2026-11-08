@@ -276,6 +276,21 @@ estiver pronto** — trabalhar sempre na branch `escritorio`.
   com sugestões fixas), status (carimbos), cor da capa, números, "Apagar
   história" (confirmDialog danger). Abas = divisórias à direita (no
   celular viram uma faixa em cima); trocar de aba usa `replaceState`.
+- Manuscrito (`chapters.js`, aba da página da história): sumário escrito
+  nas pautas (cada linha = 34px, alinhada ao fundo pautado). Criar
+  (`promptDialog`, sugere "Capítulo N"), renomear, apagar (confirmDialog
+  danger), reordenar arrastando (`drag.js` generalizado: opções `item`,
+  `row: null`, `axis: "y"`, `ghostClass`, `slotClass`) ou Alt+seta.
+  **Cliques dentro de `.aba-conteudo` são ignorados pela página da
+  história** (um "apagar" de capítulo chegava lá e abria "apagar
+  história"); a ação da história chama `apagar-historia`.
+- Capítulos (`db.js`): `loadChapters(storyId)` baixa só título e palavras
+  (`select` com `data->>title`), `getChapters` (na ordem de
+  `story.chapterOrder`; os fora da ordem vão para o fim, nunca somem),
+  `getChapter(id)` (texto inteiro, sob demanda), `addChapter`,
+  `saveChapter` (recalcula `story.words`), `renameChapter`,
+  `moveChapters`, `deleteChapter`. Formato: `{ id, storyId, title, html,
+  words, createdAt, updatedAt }`.
 - Banco: `supabase/schema-escritorio.sql` (já rodado): `stories`,
   `chapters` (FK com cascade) e bucket privado `escritorio` (pasta por
   usuária). Não usar `settings` para nada do escritório.

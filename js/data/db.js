@@ -332,6 +332,9 @@ export async function updateStory(id, changes) {
 export async function deleteStory(id) {
   await store.removeStory(id);
   stories = stories.filter((s) => s.id !== id);
+  (chapterLists.get(id) || []).forEach((c) => fullChapters.delete(c.id));
+  chapterLists.delete(id);
+  chapterListsLoading.delete(id);
   notifyStories();
 }
 
@@ -340,6 +343,105 @@ export function getAllGenres() {
   const all = new Set();
   stories.forEach((s) => s.genres.forEach((g) => all.add(g)));
   return [...all].sort((a, b) => a.localeCompare(b, "pt-BR"));
+}
+
+// ---------- Escritório: capítulos ----------
+// A lista de cada história (só título e palavras) é carregada quando ela
+// abre o manuscrito; o texto inteiro só quando abre o capítulo. A ordem fica
+// na história (`chapterOrder`). Avisos pelos mesmos `subscribeStories`.
+
+const chapterLists = new Map(); // storyId → [{ id, title, words, updatedAt }]
+const chapterListsLoading = new Map(); // storyId → promessa
+const fullChapters = new Map(); // id → capítulo inteiro (com o texto)
+
+export function loadChapters(storyId) {
+  if (!chapterListsLoading.has(storyId)) {
+    const loading = store.loadChapterList(storyId).then((list) => {
+      chapterLists.set(storyId, list);
+      notifyStories();
+    }).catch((err) => {
+      chapterListsLoading.delete(storyId); // deixa tentar de novo
+      throw err;
+    });
+    chapterListsLoading.set(storyId, loading);
+  }
+  return chapterListsLoading.get(storyId);
+}
+
+export const chaptersLoaded = (storyId) => chapterLists.has(storyId);
+
+// Na ordem do manuscrito. Um capítulo fora da ordem (ex.: a gravação da
+// ordem falhou) aparece no fim, para nunca sumir.
+export function getChapters(storyId) {
+  const list = chapterLists.get(storyId) || [];
+  const order = getStory(storyId)?.chapterOrder || [];
+  const byId = new Map(list.map((c) => [c.id, c]));
+  const inOrder = order.map((id) => byId.get(id)).filter(Boolean);
+  return [...inOrder, ...list.filter((c) => !order.includes(c.id))];
+}
+
+export async function getChapter(id) {
+  if (!fullChapters.has(id)) {
+    const chapter = await store.loadChapter(id);
+    if (chapter) fullChapters.set(id, chapter);
+  }
+  return fullChapters.get(id) || null;
+}
+
+function setChapterMeta(storyId, chapter) {
+  const meta = { id: chapter.id, title: chapter.title, words: chapter.words, updatedAt: chapter.updatedAt };
+  const list = chapterLists.get(storyId) || [];
+  const exists = list.some((c) => c.id === chapter.id);
+  chapterLists.set(storyId, exists ? list.map((c) => (c.id === chapter.id ? meta : c)) : [...list, meta]);
+}
+
+// Soma das palavras dos capítulos (guardada na história para a mesa).
+const totalWords = (storyId) => getChapters(storyId).reduce((sum, c) => sum + c.words, 0);
+
+export async function addChapter(storyId, title) {
+  const now = new Date().toISOString();
+  const chapter = { id: newId(), storyId, title, html: "", words: 0, createdAt: now, updatedAt: now };
+  await store.putChapter(chapter); // se der erro, nada muda na tela
+  fullChapters.set(chapter.id, chapter);
+  setChapterMeta(storyId, chapter);
+  const story = getStory(storyId);
+  await updateStory(storyId, { chapterOrder: [...story.chapterOrder, chapter.id] });
+  return chapter;
+}
+
+// Grava o capítulo inteiro (título, texto, palavras).
+export async function saveChapter(storyId, changes) {
+  const current = await getChapter(changes.id);
+  if (!current) throw new Error("Esse capítulo não existe mais.");
+  const chapter = { ...current, ...changes, updatedAt: new Date().toISOString() };
+  await store.putChapter(chapter);
+  fullChapters.set(chapter.id, chapter);
+  setChapterMeta(storyId, chapter);
+  const words = totalWords(storyId);
+  if (words !== getStory(storyId)?.words) await updateStory(storyId, { words });
+  else notifyStories();
+  return chapter;
+}
+
+export function renameChapter(storyId, id, title) {
+  return saveChapter(storyId, { id, title });
+}
+
+// A nova ordem dos capítulos (depois de arrastar).
+export function moveChapters(storyId, ids) {
+  return updateStory(storyId, { chapterOrder: ids });
+}
+
+// Atenção: apaga o texto do capítulo. Só depois de confirmar.
+export async function deleteChapter(storyId, id) {
+  await store.removeChapter(id);
+  fullChapters.delete(id);
+  chapterLists.set(storyId, (chapterLists.get(storyId) || []).filter((c) => c.id !== id));
+  const story = getStory(storyId);
+  await updateStory(storyId, {
+    chapterOrder: story.chapterOrder.filter((c) => c !== id),
+    words: totalWords(storyId),
+  });
 }
 
 // Biblioteca guardada neste navegador antes da nuvem (pode estar vazia).

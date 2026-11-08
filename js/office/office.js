@@ -84,6 +84,8 @@ const storyPage = createStoryPage(storyEl, {
     history.replaceState(null, "", "#/escritorio");
     routeOffice();
   },
+  // O editor de escrita chega na próxima etapa.
+  onOpenChapter: () => toast("O editor de escrita chega na próxima etapa ✨"),
 });
 
 function visibleStories() {
