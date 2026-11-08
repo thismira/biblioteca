@@ -250,6 +250,11 @@ export const STORY_STATUSES = [
   ["pronta", "Pronta"],
 ];
 
+// Visual do texto de uma história (vale para todos os capítulos dela).
+// paragraphs: "livro" (recuo na primeira linha) ou "docs" (espaço entre eles).
+export const STORY_LAYOUT = { font: "Lora", size: 12, spacing: 1.5, paragraphs: "livro" };
+export const storyLayout = (story) => ({ ...STORY_LAYOUT, ...story?.layout });
+
 let stories = [];
 let storiesLoaded = null; // promessa do primeiro carregamento
 const storyListeners = new Set();
@@ -273,6 +278,7 @@ function storyDefaults(fields) {
     spotifyUrl: "",
     writingDays: {},    // { "2026-11-07": palavras escritas nesse dia }
     lastEdit: null,     // { chapterId, title, at } — "Continuar escrevendo"
+    layout: {},         // visual do texto (fonte, tamanho…): ver STORY_LAYOUT
     createdAt: now,
     updatedAt: now,
     ...fields,

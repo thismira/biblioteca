@@ -292,14 +292,32 @@ estiver pronto** — trabalhar sempre na branch `escritorio`.
   `moveChapters`, `deleteChapter`. Formato: `{ id, storyId, title, html,
   words, createdAt, updatedAt }`.
 - Editor (`editor.js` + `css/editor.css`, rota
-  `#/historia/<id>/capitulo/<id>`): folha de papel, letra Lora, parágrafos
-  com recuo. `contenteditable` + `execCommand` (negrito, itálico, cena =
-  `formatBlock h3`, separador = `<hr>` desenhado como ✦ ✦ ✦, desfazer).
-  Barra presa no alto (`position: sticky` — por isso `.escritorio` usa
-  `overflow: clip`, não `hidden`). Rodapé fixo: status ("Salvo às…") e
-  palavras do capítulo / da história / hoje. Modo foco (Esc sai).
-  Anterior/próximo capítulo no fim da folha (trocam com `replaceState`).
-  Atenção: `.vazio` já existe no base.css — a folha vazia usa
+  `#/historia/<id>/capitulo/<id>`), no jeito do Google Docs (pedido do
+  dono): cabeçalho com "← Manuscrito", título do capítulo (editável),
+  história e "Salvo às…"; barra completa (desfazer/refazer, estilo Texto
+  normal/Título de cena, fonte, tamanho −/+, N I S R, alinhamentos,
+  espaçamento, "Parágrafos: livro/Docs", listas, ✦, sumário); páginas A4
+  brancas sobre fundo cinza; sumário das cenas (`h3`) à esquerda (só
+  ≥ 1260px; pula direto, sem rolagem suave); rodapé "Página X de Y ·
+  palavras · na história · hoje". `contenteditable` + `execCommand`.
+  Modo foco (Esc sai). Anterior/próximo capítulo depois da última página.
+- **Fonte, tamanho, espaçamento e estilo de parágrafo valem para o texto
+  todo** (escolha do dono) e ficam na história: `story.layout`
+  (`db.storyLayout()`, padrão `STORY_LAYOUT` = Lora 12 pt, 1,5, "livro").
+  Aplicados como variáveis CSS no `.ed-texto`. Fontes em `FONTS`
+  (editor.js; EB Garamond e Courier Prime no link do Google Fonts).
+- Páginas (`paginate()`, só ≥ 900px; no celular folha contínua): A4 =
+  1123px + 16px de vão, margens de 96px. Um bloco que atravessaria o pé
+  da página vai inteiro para a próxima com `padding-top` por regras
+  `nth-child` num `<style class="ed-quebras">` — nunca escrevendo no texto
+  dela (desfazer e salvar não mudam). Diferença do Docs: não corta
+  parágrafo no meio, pode sobrar espaço no pé da página. Recalcula 250 ms
+  após digitar, ao mudar o visual, ao redimensionar e quando as fontes
+  carregam.
+- Cabeçalho do editor preso no alto (`position: sticky`) — por isso
+  `.escritorio` usa `overflow: clip`, não `hidden`.
+- `base.css` deixa todo `select` com 100% de largura: na barra usa
+  `width: auto`. `.vazio` já existe no base.css — a folha vazia usa
   `folha-vazia`.
 - Nunca perder texto: salva 1 s após parar de digitar, ao sair e no
   `pagehide`/`visibilitychange`. Antes de cada envio grava o rascunho
@@ -316,9 +334,11 @@ estiver pronto** — trabalhar sempre na branch `escritorio`.
   "(cópia deste aparelho)" logo depois. `loadChapter` usa o `updated_at`
   do banco como `updatedAt`.
 - `sanitize.js`: tudo o que entra (colar, nuvem) vira só `p`, `h3`, `hr`,
-  `strong`, `em`, `br`; texto sempre escapado. Entende o Google Docs
-  (`<b style="font-weight:normal">` não é negrito; negrito/itálico vêm do
-  `style` dos spans); linhas "* * *", "***", "✦ ✦ ✦", "#" viram `<hr>`.
+  `ul`/`ol` > `li` (um nível), `strong`, `em`, `u`, `s`, `br` e
+  `style="text-align:…"` (left/center/right/justify) nos blocos; texto
+  sempre escapado. Sublinhado de link colado não conta. Entende o Google Docs
+  (`<b style="font-weight:normal">` não é negrito; formatação vem do
+  `style` dos spans; `<p>` dentro de `<li>` não quebra o item); linhas "* * *", "***", "✦ ✦ ✦", "#" viram `<hr>`.
   `countWords()` conta "guarda-chuva"/"d’água" como uma palavra.
   20 mil palavras: contar 14 ms, limpar 3 ms.
 - História ganhou `writingDays` (palavras por dia, 120 dias; o que ela

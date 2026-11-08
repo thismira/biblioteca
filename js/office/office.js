@@ -180,6 +180,7 @@ async function createStory() {
     label: "Título (dá para mudar depois)",
     placeholder: "Ex.: Cartas para Lisboa",
     confirmText: "Criar história",
+    maxLength: 80,
   });
   if (title == null) return;
   let story;

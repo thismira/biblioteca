@@ -52,7 +52,7 @@ export async function alertDialog({ title, message, buttonText = "Entendi" }) {
 // Pede um texto (ex.: nome de estante). Devolve o texto ou null se ela
 // cancelar. `validate(texto)` pode devolver uma mensagem de erro.
 // `type: "password"` esconde o que é digitado (senhas não são aparadas).
-export function promptDialog({ title, label, value = "", placeholder = "", confirmText = "Salvar", validate, type = "text" }) {
+export function promptDialog({ title, label, value = "", placeholder = "", confirmText = "Salvar", validate, type = "text", maxLength = 60 }) {
   return new Promise((resolve) => {
     const dialog = document.createElement("dialog");
     dialog.className = "janela-confirmar";
@@ -74,6 +74,7 @@ export function promptDialog({ title, label, value = "", placeholder = "", confi
     dialog.querySelector('button[type="submit"]').textContent = confirmText;
     const input = dialog.querySelector("input");
     const error = dialog.querySelector(".pergunta-erro");
+    input.maxLength = maxLength;
     input.value = value;
     input.placeholder = placeholder;
     if (type === "password") {

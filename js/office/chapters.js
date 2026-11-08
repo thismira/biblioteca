@@ -103,6 +103,7 @@ export function createChapterList({ onOpen }) {
       label: "Título do capítulo",
       value: `Capítulo ${n}`,
       confirmText: "Criar",
+      maxLength: 80,
     });
     if (!title) return;
     try {
@@ -120,6 +121,7 @@ export function createChapterList({ onOpen }) {
       title: "Renomear capítulo",
       label: "Título do capítulo",
       value: chapter.title,
+      maxLength: 80,
     });
     if (!title || title === chapter.title) return;
     db.renameChapter(storyId, id, title).catch(showError);
