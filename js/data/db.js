@@ -274,6 +274,7 @@ function storyDefaults(fields) {
     words: 0,           // total de palavras (somado dos capítulos)
     characters: [],
     world: [],          // worldbuilding: seções com fichas (ver addWorldSection)
+    worldPhotos: [],    // álbum de fotos do mundo: [{ path, w, h }]
     quotes: [],
     spotifyUrl: "",
     writingDays: {},    // { "2026-11-07": palavras escritas nesse dia }
@@ -341,7 +342,12 @@ export async function updateStory(id, changes) {
 
 // Atenção: apaga a história E os capítulos dela. Só depois de confirmar.
 export async function deleteStory(id) {
-  const photos = [...(getStory(id)?.characters || []).flatMap(characterFiles), ...worldFiles(getStory(id)?.world || [])];
+  const story = getStory(id);
+  const photos = [
+    ...(story?.characters || []).flatMap(characterFiles),
+    ...worldFiles(story?.world || []),
+    ...(story?.worldPhotos || []).map((p) => p.path),
+  ];
   await store.removeStory(id);
   removePhotosQuietly(photos);
   stories = stories.filter((s) => s.id !== id);
@@ -725,6 +731,34 @@ export async function setWorldCardImage(storyId, sectionId, cardId, { blob, w, h
     throw err;
   }
   if (old) removePhotosQuietly([old.path]);
+}
+
+// Álbum de fotos do mundo (inspiração: lugares, roupas, clima…).
+export async function addWorldPhotos(storyId, list, onProgress) {
+  const added = [];
+  try {
+    for (const [i, { blob, w, h }] of list.entries()) {
+      const path = `${storyId}/mundo/fotos/${newId()}.jpg`;
+      await store.uploadPhoto(path, blob);
+      added.push({ path, w, h });
+      onProgress?.(i + 1, list.length);
+    }
+  } finally {
+    // as que subiram entram no álbum, mesmo se uma falhar no meio
+    if (added.length) {
+      await updateStory(storyId, { worldPhotos: [...getStory(storyId).worldPhotos, ...added] }).catch((err) => {
+        removePhotosQuietly(added.map((p) => p.path));
+        throw err;
+      });
+    }
+  }
+  return added;
+}
+
+// Atenção: apaga a foto do álbum do mundo. Só depois de confirmar.
+export async function removeWorldPhoto(storyId, path) {
+  await updateStory(storyId, { worldPhotos: getStory(storyId).worldPhotos.filter((p) => p.path !== path) });
+  removePhotosQuietly([path]);
 }
 
 // Atenção: apaga a imagem da ficha. Só depois de confirmar.

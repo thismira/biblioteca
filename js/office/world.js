@@ -1,5 +1,6 @@
-// Aba "Mundo" (worldbuilding): seções como divisórias de um arquivo, cada
-// uma com fichas (título, texto e imagem opcional). Seções sugeridas
+// Aba "Mundo" (worldbuilding): no topo, o álbum "Fotos" (inspiração:
+// lugares, roupas, clima…; album.js). Depois, seções como divisórias de um
+// arquivo, cada uma com fichas (título, texto e imagem opcional). Seções sugeridas
 // aparecem como "+ Lugares", "+ Magia & regras"… e só são criadas quando
 // ela clica. Busca no título e no texto das fichas (sem acentos).
 // Clicar numa ficha abre a janela da ficha (world-card.js).
@@ -8,6 +9,7 @@ import * as db from "../data/db.js";
 import { confirmDialog, promptDialog, toast } from "../ui/dialogs.js";
 import { plain } from "../ui/search.js";
 import { openWorldCard } from "./world-card.js";
+import { createAlbum } from "./album.js";
 
 const plural = (n, one, many) => `${n.toLocaleString("pt-BR")} ${n === 1 ? one : many}`;
 // Texto de uma ficha sem as tags (para a busca e o resumo).
@@ -24,6 +26,12 @@ export function createWorld() {
     <h2 class="aba-titulo">Mundo</h2>
     <input type="search" class="mundo-busca" placeholder="Procurar no mundo…" aria-label="Procurar nas fichas do mundo">
     <p class="mundo-resultado" aria-live="polite"></p>
+    <section class="mundo-secao mundo-fotos">
+      <header class="ms-cabeca">
+        <button class="ms-nome" type="button" data-acao="abrir-fechar-fotos" aria-expanded="true"><span class="ms-seta" aria-hidden="true">▸</span><span class="ms-titulo">Fotos</span> <small></small></button>
+      </header>
+      <div class="mundo-fotos-corpo"></div>
+    </section>
     <div class="mundo-secoes"></div>
     <div class="mundo-sugestoes"></div>`;
   const list = el.querySelector(".mundo-secoes");
@@ -32,8 +40,29 @@ export function createWorld() {
   const suggestions = el.querySelector(".mundo-sugestoes");
   let storyId = null;
   const closed = new Set(); // seções fechadas (só na memória)
+  let photosClosed = false;
 
   const world = () => db.getStory(storyId)?.world || [];
+  const photos = () => db.getStory(storyId)?.worldPhotos || [];
+
+  const album = createAlbum({
+    getPhotos: photos,
+    add: (list, onProgress) => db.addWorldPhotos(storyId, list, onProgress),
+    remove: (path) => db.removeWorldPhoto(storyId, path),
+    deleteMessage: () => "A foto será apagada da nuvem. Isso não pode ser desfeito.",
+    emptyText: "Fotos que lembram esse mundo: lugares, paisagens, roupas, objetos, o clima da história… ✨",
+  });
+  el.querySelector(".mundo-fotos-corpo").appendChild(album.el);
+
+  function renderPhotos(searching) {
+    const box = el.querySelector(".mundo-fotos");
+    box.hidden = searching; // buscando: só as fichas
+    const n = photos().length;
+    box.querySelector("small").textContent = n ? plural(n, "foto", "fotos") : "";
+    box.querySelector(".ms-nome").setAttribute("aria-expanded", String(!photosClosed));
+    el.querySelector(".mundo-fotos-corpo").hidden = photosClosed;
+    if (!photosClosed) album.render();
+  }
 
   function cardButton(sectionId, card) {
     const b = document.createElement("button");
@@ -97,6 +126,7 @@ export function createWorld() {
     search.hidden = !world().some((s) => s.cards.length);
     if (search.hidden && search.value) search.value = "";
     renderSuggestions(words.length > 0);
+    renderPhotos(words.length > 0);
     loadImages();
   }
 
@@ -143,6 +173,8 @@ export function createWorld() {
       storyId = id;
       search.value = "";
       closed.clear();
+      photosClosed = false;
+      album.reset();
     }
     render();
   }
@@ -188,6 +220,7 @@ export function createWorld() {
   }
 
   el.addEventListener("click", (event) => {
+    if (event.target.closest(".album-bloco")) return; // o álbum cuida dos próprios cliques
     const card = event.target.closest(".ficha-mundo-cartao");
     if (card) return openWorldCard(storyId, card.dataset.secao, card.dataset.ficha);
     const button = event.target.closest("[data-acao]");
@@ -199,7 +232,10 @@ export function createWorld() {
     else if (action === "renomear-secao") renameSection(sectionId);
     else if (action === "apagar-secao") removeSection(sectionId);
     else if (action === "nova-ficha") newCard(sectionId);
-    else if (action === "abrir-fechar") {
+    else if (action === "abrir-fechar-fotos") {
+      photosClosed = !photosClosed;
+      renderPhotos(false);
+    } else if (action === "abrir-fechar") {
       if (closed.has(sectionId)) closed.delete(sectionId);
       else closed.add(sectionId);
       render();

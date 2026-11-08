@@ -1096,3 +1096,9 @@ dialog.album-visor::backdrop { background: transparent; }
 .janela-ficha .acoes { align-items: center; margin-top: 12px; }
 .janela-ficha .acoes .link.perigo { margin-right: auto; }
 .fm-status { font-size: 0.8rem; font-weight: 700; color: var(--texto-suave); }
+
+/* álbum "Fotos" no topo do Mundo (mesmo mural do personagem) */
+.mundo-fotos { margin-bottom: 14px; background: rgba(243, 204, 214, 0.35); }
+.mundo-fotos .ms-nome { background: #F3CCD6; }
+.mundo-fotos-corpo { padding-top: 10px; }
+.mundo-fotos .album { columns: 3 100px; }

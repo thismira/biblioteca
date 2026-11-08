@@ -10,7 +10,8 @@ import { createQuotes } from "../ui/quotes.js";
 import { createPlaylist } from "../ui/playlist.js";
 import { createCarousel } from "../ui/carousel.js";
 import { confirmDialog, toast } from "../ui/dialogs.js";
-import { pickPortrait, pickImages, prepareAlbumPhoto } from "./photos.js";
+import { pickPortrait } from "./photos.js";
+import { createAlbum } from "./album.js";
 
 const ROLES = ["Protagonista", "Interesse amoroso", "Antagonista", "Coadjuvante", "Mentor(a)", "Família", "Amigo(a)", "Narrador(a)"];
 const STARTER_TRAITS = ["Teimosa", "Leal", "Sonhadora", "Sarcástico", "Tímida", "Corajoso", "Misteriosa", "Gentil", "Orgulhoso", "Impulsiva"];
@@ -44,10 +45,7 @@ export function createCharacterPage(root, { onBack, onDeleted }) {
       </section>
       <section class="esc-pag dir ficha-dir">
         <h2 class="aba-titulo">Álbum</h2>
-        <p class="album-vazio">Fotos que lembram esse personagem: rostos, roupas, lugares, cores… ✨</p>
-        <div class="album"></div>
-        <button class="link album-mais" type="button" data-acao="album-add">+ Adicionar fotos</button>
-        <p class="ficha-enviando album-enviando" aria-live="polite"></p>
+        <div class="ficha-album"></div>
         <h2 class="aba-titulo">Quotes</h2>
         <div class="ficha-quotes"></div>
         <h2 class="aba-titulo">Playlist</h2>
@@ -165,149 +163,22 @@ export function createCharacterPage(root, { onBack, onDeleted }) {
     db.removeCharacterCover(storyId, characterId).catch((err) => toast(err.message));
   }
 
-  // ---------- Álbum ----------
+  // ---------- Álbum (album.js) ----------
 
-  async function renderAlbum() {
-    const c = character();
-    const id = characterId;
-    const grid = $(".album");
-    $(".album-vazio").hidden = c.photos.length > 0;
-    let urls = {};
-    try {
-      urls = await db.getPhotoUrls(c.photos.map((p) => p.path));
-    } catch (err) {
-      console.error(err);
-    }
-    if (id !== characterId) return;
-    // reaproveita as fotos que já estão na tela (não piscam)
-    const old = new Map([...grid.children].map((b) => [b.dataset.path, b]));
-    grid.replaceChildren(...character().photos.map((p, i) => {
-      let b = old.get(p.path);
-      if (!b) {
-        b = document.createElement("button");
-        b.type = "button";
-        b.className = "album-foto";
-        b.dataset.path = p.path;
-        b.innerHTML = `<img alt="" loading="lazy"><span class="album-capa" title="É a capa">★</span>`;
-        b.querySelector("img").style.aspectRatio = `${p.w} / ${p.h}`;
-      }
-      const img = b.querySelector("img");
-      if (urls[p.path] && !img.src) img.src = urls[p.path];
-      b.dataset.i = i;
-      b.setAttribute("aria-label", `Abrir a foto ${i + 1} do álbum`);
-      b.classList.toggle("e-capa", character().cover?.path === p.path);
-      return b;
-    }));
-  }
-
-  async function addToAlbum() {
-    const files = await pickImages();
-    if (!files.length) return;
-    const sending = $(".album-enviando");
-    const photos = [];
-    for (const file of files) {
-      try {
-        photos.push(await prepareAlbumPhoto(file));
-      } catch (err) {
-        toast(err.message);
-      }
-    }
-    if (!photos.length) return;
-    sending.textContent = `Enviando… 0 de ${photos.length}`;
-    try {
-      await db.addAlbumPhotos(storyId, characterId, photos, (done, total) => {
-        sending.textContent = `Enviando… ${done} de ${total}`;
-      });
-      sending.textContent = "";
-    } catch (err) {
-      console.error(err);
-      sending.textContent = "Algumas fotos não foram enviadas. Confira a internet e tente de novo.";
-    }
-  }
-
-  // Visor: a foto grande, com setas, "usar como capa" e "apagar".
-  function openViewer(start) {
-    let index = start;
-    const dialog = document.createElement("dialog");
-    dialog.className = "album-visor";
-    dialog.innerHTML = `
-      <button class="visor-fechar" type="button" data-acao="fechar" aria-label="Fechar">×</button>
-      <button class="visor-seta" type="button" data-ir="-1" aria-label="Foto anterior">‹</button>
-      <figure class="visor-foto"><img alt=""></figure>
-      <button class="visor-seta" type="button" data-ir="1" aria-label="Próxima foto">›</button>
-      <div class="visor-rodape">
-        <span class="visor-contagem" aria-live="polite"></span>
-        <button class="botao secundario" type="button" data-acao="visor-capa"></button>
-        <button class="botao perigo" type="button" data-acao="visor-apagar">Apagar</button>
-      </div>`;
-    document.body.appendChild(dialog);
-    const img = dialog.querySelector("img");
-
-    async function show() {
-      const photos = character()?.photos || [];
-      if (!photos.length) return dialog.close();
-      index = (index + photos.length) % photos.length;
-      const p = photos[index];
-      dialog.querySelector(".visor-contagem").textContent = `${index + 1} de ${photos.length}`;
-      dialog.querySelectorAll(".visor-seta").forEach((b) => (b.hidden = photos.length < 2));
-      const isCover = character().cover?.path === p.path;
-      const coverButton = dialog.querySelector('[data-acao="visor-capa"]');
-      coverButton.textContent = isCover ? "★ É a capa" : "★ Usar como capa";
-      coverButton.disabled = isCover;
-      img.dataset.path = p.path;
-      img.style.aspectRatio = `${p.w} / ${p.h}`;
-      img.removeAttribute("src");
-      const urls = await db.getPhotoUrls([p.path]).catch(() => ({}));
-      if (img.dataset.path === p.path && urls[p.path]) img.src = urls[p.path];
-    }
-
-    dialog.addEventListener("click", async (event) => {
-      const step = event.target.closest("[data-ir]")?.dataset.ir;
-      const action = event.target.closest("[data-acao]")?.dataset.acao;
-      if (step) {
-        index += Number(step);
-        show();
-      } else if (action === "fechar" || event.target === dialog) {
-        dialog.close();
-      } else if (action === "visor-capa") {
-        await db.useAlbumPhotoAsCover(storyId, characterId, img.dataset.path).catch((err) => toast(err.message));
-        show();
-      } else if (action === "visor-apagar") {
-        const path = img.dataset.path;
-        const ok = await confirmDialog({
-          title: "Apagar esta foto do álbum?",
-          message: character().cover?.path === path
-            ? "A foto sai do álbum, mas continua como capa."
-            : "A foto será apagada da nuvem. Isso não pode ser desfeito.",
-          confirmText: "Sim, apagar",
-          danger: true,
-        });
-        if (!ok) return;
-        await db.removeAlbumPhoto(storyId, characterId, path).catch((err) => toast(err.message));
-        show();
-      }
-    });
-    dialog.addEventListener("keydown", (event) => {
-      if (event.target.closest("button") && event.key === "Enter") return;
-      if (event.key === "ArrowLeft") { index -= 1; show(); }
-      if (event.key === "ArrowRight") { index += 1; show(); }
-    });
-    // arrastar para os lados (dedo ou mouse)
-    let startX = null;
-    img.addEventListener("pointerdown", (e) => (startX = e.clientX));
-    img.addEventListener("pointerup", (e) => {
-      if (startX == null) return;
-      const dx = e.clientX - startX;
-      startX = null;
-      if (Math.abs(dx) > 50) {
-        index += dx < 0 ? 1 : -1;
-        show();
-      }
-    });
-    dialog.addEventListener("close", () => dialog.remove());
-    dialog.showModal();
-    show();
-  }
+  const album = createAlbum({
+    getPhotos: () => character()?.photos || [],
+    add: (list, onProgress) => db.addAlbumPhotos(storyId, characterId, list, onProgress),
+    remove: (path) => db.removeAlbumPhoto(storyId, characterId, path),
+    deleteMessage: (path) => (character().cover?.path === path
+      ? "A foto sai do álbum, mas continua como capa."
+      : "A foto será apagada da nuvem. Isso não pode ser desfeito."),
+    cover: {
+      is: (path) => character()?.cover?.path === path,
+      use: (path) => db.useAlbumPhotoAsCover(storyId, characterId, path),
+    },
+    emptyText: "Fotos que lembram esse personagem: rostos, roupas, lugares, cores… ✨",
+  });
+  $(".ficha-album").appendChild(album.el);
 
   // ---------- Frases das músicas ----------
 
@@ -434,7 +305,7 @@ export function createCharacterPage(root, { onBack, onDeleted }) {
       fit(about);
     }
     renderCover();
-    renderAlbum();
+    album.render();
     if (!editingLyric) renderLyrics();
   }
 
@@ -449,7 +320,7 @@ export function createCharacterPage(root, { onBack, onDeleted }) {
       editingLyric = null;
       root.querySelectorAll(".ficha-enviando").forEach((p) => (p.textContent = ""));
       $(".ficha-foto").replaceChildren();
-      $(".album").replaceChildren();
+      album.reset();
       lyricsCarousel.reset();
       createCategoryPicker($(".ficha-traits"), {
         selected: character().traits,
@@ -522,16 +393,13 @@ export function createCharacterPage(root, { onBack, onDeleted }) {
 
   // Cliques da página (os quotes e a playlist cuidam dos próprios botões).
   root.addEventListener("click", (event) => {
-    if (event.target.closest(".ficha-quotes, .ficha-playlist, .letras, .letra-nova")) return;
-    const photo = event.target.closest(".album-foto");
-    if (photo && characterId) return openViewer(Number(photo.dataset.i));
+    if (event.target.closest(".ficha-quotes, .ficha-playlist, .letras, .letra-nova, .ficha-album")) return;
     const el = event.target.closest("[data-acao]");
     if (!el || !characterId) return;
     const action = el.dataset.acao;
     if (action === "voltar") onBack(storyId);
     else if (action === "capa-trocar") changeCover();
     else if (action === "capa-tirar") removeCover();
-    else if (action === "album-add") addToAlbum();
     else if (action === "apagar-personagem") removeCharacter();
   });
 

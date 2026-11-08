@@ -408,6 +408,13 @@ estiver pronto** — trabalhar sempre na branch `escritorio`.
 - Testes no preview com abas em segundo plano: o navegador adia eventos
   (`close` de dialog, teclado). Trazer a aba de teste para a frente quando
   o painel estiver escondido (e devolver a aba do dono no fim).
+- `album.js` (`createAlbum`): mural de fotos + visor (setas/teclado/
+  arrastar, apagar com confirmação; opção `cover` = "★ Usar como capa").
+  Usado pelo personagem (álbum + capa) e pelo Mundo (fotos do mundo).
+- Mundo, no topo: divisória rosa "Fotos" (álbum de inspiração,
+  `story.worldPhotos = [{ path, w, h }]`, Storage `<storyId>/mundo/fotos/…`,
+  `db.addWorldPhotos`/`removeWorldPhoto`); some durante a busca; abre e
+  fecha (só na memória).
 - Mundo (aba, `world.js` + `world-card.js`): seções = divisórias verdes
   (abrir/fechar só na memória, renomear, apagar com confirmação; nome
   repetido é recusado); sugestões (`db.WORLD_SUGGESTIONS`: Lugares, Magia
