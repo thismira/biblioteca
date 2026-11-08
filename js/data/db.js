@@ -273,7 +273,7 @@ function storyDefaults(fields) {
     chapterOrder: [],   // ids dos capítulos, na ordem do manuscrito
     words: 0,           // total de palavras (somado dos capítulos)
     characters: [],
-    world: [],
+    world: [],          // worldbuilding: seções com fichas (ver addWorldSection)
     quotes: [],
     spotifyUrl: "",
     writingDays: {},    // { "2026-11-07": palavras escritas nesse dia }
@@ -341,7 +341,7 @@ export async function updateStory(id, changes) {
 
 // Atenção: apaga a história E os capítulos dela. Só depois de confirmar.
 export async function deleteStory(id) {
-  const photos = (getStory(id)?.characters || []).flatMap(characterFiles);
+  const photos = [...(getStory(id)?.characters || []).flatMap(characterFiles), ...worldFiles(getStory(id)?.world || [])];
   await store.removeStory(id);
   removePhotosQuietly(photos);
   stories = stories.filter((s) => s.id !== id);
@@ -657,6 +657,81 @@ export async function getPhotoUrls(paths) {
     for (const [p, url] of Object.entries(urls)) photoLinks.set(p, { url, until: now + PHOTO_LINK_SECONDS * 1000 });
   }
   return Object.fromEntries(paths.filter((p) => photoLinks.has(p)).map((p) => [p, photoLinks.get(p).url]));
+}
+
+// ---------- Escritório: worldbuilding (aba Mundo) ----------
+// `story.world` = seções [{ id, name, cards: [{ id, title, html, image,
+// createdAt, updatedAt }] }]. `image` = { path, w, h } no Storage (opcional).
+
+export const WORLD_SUGGESTIONS = ["Lugares", "Magia & regras", "Povos & culturas", "História & linha do tempo", "Objetos", "Glossário"];
+
+const worldFiles = (sections) => sections.flatMap((sec) => sec.cards.map((c) => c.image?.path)).filter(Boolean);
+
+function updateWorld(storyId, change) {
+  return updateStory(storyId, { world: change(getStory(storyId).world) });
+}
+
+function updateCards(storyId, sectionId, change) {
+  return updateWorld(storyId, (world) => world.map((sec) => (sec.id === sectionId ? { ...sec, cards: change(sec.cards) } : sec)));
+}
+
+export const getWorldCard = (storyId, sectionId, cardId) =>
+  getStory(storyId)?.world.find((s) => s.id === sectionId)?.cards.find((c) => c.id === cardId) || null;
+
+export async function addWorldSection(storyId, name) {
+  const section = { id: newId(), name, cards: [] };
+  await updateWorld(storyId, (world) => [...world, section]);
+  return section;
+}
+
+export function renameWorldSection(storyId, sectionId, name) {
+  return updateWorld(storyId, (world) => world.map((sec) => (sec.id === sectionId ? { ...sec, name } : sec)));
+}
+
+// Atenção: apaga a seção, as fichas e as imagens dela. Só depois de confirmar.
+export async function deleteWorldSection(storyId, sectionId) {
+  const section = getStory(storyId).world.find((s) => s.id === sectionId);
+  await updateWorld(storyId, (world) => world.filter((sec) => sec.id !== sectionId));
+  removePhotosQuietly(section ? worldFiles([section]) : []);
+}
+
+export async function addWorldCard(storyId, sectionId) {
+  const now = new Date().toISOString();
+  const card = { id: newId(), title: "", html: "", image: null, createdAt: now, updatedAt: now };
+  await updateCards(storyId, sectionId, (cards) => [...cards, card]);
+  return card;
+}
+
+export function updateWorldCard(storyId, sectionId, cardId, changes) {
+  const now = new Date().toISOString();
+  return updateCards(storyId, sectionId, (cards) => cards.map((c) => (c.id === cardId ? { ...c, ...changes, updatedAt: now } : c)));
+}
+
+// Atenção: apaga a ficha e a imagem dela. Só depois de confirmar.
+export async function deleteWorldCard(storyId, sectionId, cardId) {
+  const card = getWorldCard(storyId, sectionId, cardId);
+  await updateCards(storyId, sectionId, (cards) => cards.filter((c) => c.id !== cardId));
+  removePhotosQuietly(card?.image ? [card.image.path] : []);
+}
+
+export async function setWorldCardImage(storyId, sectionId, cardId, { blob, w, h }) {
+  const path = `${storyId}/mundo/${cardId}/${newId()}.jpg`;
+  await store.uploadPhoto(path, blob);
+  const old = getWorldCard(storyId, sectionId, cardId)?.image;
+  try {
+    await updateWorldCard(storyId, sectionId, cardId, { image: { path, w, h } });
+  } catch (err) {
+    removePhotosQuietly([path]);
+    throw err;
+  }
+  if (old) removePhotosQuietly([old.path]);
+}
+
+// Atenção: apaga a imagem da ficha. Só depois de confirmar.
+export async function removeWorldCardImage(storyId, sectionId, cardId) {
+  const old = getWorldCard(storyId, sectionId, cardId)?.image;
+  await updateWorldCard(storyId, sectionId, cardId, { image: null });
+  if (old) removePhotosQuietly([old.path]);
 }
 
 // ---------- Importação (Trazer do Google Docs) ----------

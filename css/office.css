@@ -994,3 +994,105 @@ dialog.album-visor::backdrop { background: transparent; }
   .ficha-dir .carrossel-rodape { grid-area: rodape; grid-column: auto; }
   .ficha-dir .carrossel-seta { width: 34px; height: 34px; font-size: 1.5rem; }
 }
+
+/* ====================== MUNDO (worldbuilding) ======================
+   Seções como divisórias de arquivo; fichas como cartões pautados. */
+.mundo-busca { margin: 0 0 8px; }
+.mundo-resultado { margin: 0 0 8px; font-weight: 700; font-size: 0.85rem; color: var(--texto-suave); }
+.mundo-resultado:empty { display: none; }
+.mundo-secoes { display: grid; gap: 14px; }
+.mundo-secao { border-radius: 4px 12px 12px 12px; background: rgba(217, 228, 209, 0.45); padding: 0 10px 10px; }
+.ms-cabeca { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.ms-nome {
+  margin: 0 0 0 -10px;
+  padding: 7px 14px 6px 10px;
+  border: 0;
+  border-radius: 4px 12px 0 0;
+  background: #D9E4D1;
+  color: var(--texto);
+  font: 600 1.15rem var(--fonte-titulo);
+  cursor: pointer;
+  text-align: left;
+}
+.ms-nome small { font: 700 0.7rem var(--fonte-texto); color: var(--texto-suave); }
+.ms-seta { display: inline-block; margin-right: 6px; font-size: 0.8rem; transition: rotate 0.2s; }
+.ms-nome[aria-expanded="true"] .ms-seta { rotate: 90deg; }
+.ms-acoes { display: flex; gap: 10px; font-size: 0.8rem; opacity: 0; transition: opacity 0.15s; }
+.mundo-secao:hover .ms-acoes, .ms-cabeca:focus-within .ms-acoes { opacity: 1; }
+@media (hover: none) { .ms-acoes { opacity: 1; } }
+.ms-fichas { display: grid; gap: 8px; padding-top: 10px; }
+.ficha-mundo-cartao {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  width: 100%;
+  padding: 10px 12px 10px;
+  border: 0;
+  border-top: 3px solid #E7A0B2;
+  border-radius: 2px 2px 6px 6px;
+  background: #FFFDF9;
+  background-image: repeating-linear-gradient(transparent 0 21px, #E6EEF4 21px 22px);
+  background-position: 0 30px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 2px 4px 10px rgba(74, 44, 53, 0.1);
+  color: var(--texto);
+  text-align: left;
+  cursor: pointer;
+  transition: translate 0.15s, box-shadow 0.15s;
+}
+.ficha-mundo-cartao:hover { translate: 0 -2px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 3px 8px 16px rgba(74, 44, 53, 0.16); }
+.ficha-mundo-cartao:focus-visible { outline: 3px solid var(--acento); outline-offset: 2px; }
+.fmc-imagem { flex: none; width: 54px; height: 54px; object-fit: cover; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15); background: #F3E6E9; }
+.fmc-texto { min-width: 0; }
+.fmc-texto b { display: block; font: 600 1.1rem/1.25 var(--fonte-titulo); overflow-wrap: anywhere; }
+.fmc-texto span { display: block; margin-top: 2px; font-size: 0.82rem; line-height: 22px; color: var(--texto-suave); }
+.fmc-texto span:empty { display: none; }
+.ficha-mundo-nova {
+  padding: 8px;
+  border: 2px dashed rgba(92, 110, 82, 0.35);
+  border-radius: 6px;
+  background: transparent;
+  font: 600 1.25rem var(--manuscrita);
+  color: #5C6E52;
+  cursor: pointer;
+}
+.ficha-mundo-nova:hover { background: rgba(255, 255, 255, 0.5); }
+.mundo-sugestoes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
+.ms-dica { flex: 1 0 100%; margin: 0 0 2px; font-size: 0.85rem; color: var(--texto-suave); }
+
+/* janela da ficha */
+.janela-ficha { width: min(640px, calc(100vw - 32px)); }
+.fm-topo { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.fm-secao { padding: 3px 10px; border-radius: 999px; background: #D9E4D1; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #476B3F; }
+.fm-fechar { width: 36px; height: 36px; border: 0; border-radius: 50%; background: none; font-size: 1.6rem; color: var(--texto-suave); cursor: pointer; }
+.fm-fechar:hover { background: rgba(158, 74, 101, 0.1); }
+.fm-titulo { width: 100%; margin: 4px 0 10px; padding: 4px 8px; border: 1.5px solid transparent; border-radius: 8px; background: transparent; box-shadow: none; font: 600 1.7rem var(--fonte-titulo); }
+.fm-titulo:hover { border-color: #E3D2D8; }
+.fm-titulo:focus { outline: none; border-color: var(--acento); background: #fff; }
+.fm-imagem { margin-bottom: 10px; }
+.fm-imagem img { display: block; max-width: 100%; max-height: 300px; width: auto; border: 5px solid #fff; box-shadow: 0 2px 10px rgba(74, 44, 53, 0.18); background: #F3E6E9; }
+.fm-imagem-acoes { display: flex; gap: 14px; margin-top: 6px; font-size: 0.85rem; }
+.fm-ferramentas { display: flex; gap: 2px; margin-bottom: 4px; }
+.fm-ferramentas button { min-width: 32px; height: 30px; border: 0; border-radius: 6px; background: rgba(255, 255, 255, 0.6); font: 600 1rem var(--fonte-titulo); color: var(--texto); cursor: pointer; }
+.fm-ferramentas button:hover { background: #fff; }
+.fm-ferramentas i { font-style: italic; }
+.fm-ferramentas b { font-weight: 800; }
+.fm-texto {
+  position: relative;
+  min-height: 180px;
+  max-height: 48vh;
+  overflow-y: auto;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #FFFDF9;
+  box-shadow: inset 0 0 0 1.5px #E7D3DA;
+  font: 400 1.05rem/1.6 "Lora", Georgia, serif;
+  color: #3E2830;
+  outline: none;
+}
+.fm-texto:focus { box-shadow: inset 0 0 0 2px var(--acento); }
+.fm-texto p { margin: 0 0 0.6em; }
+.fm-texto ul, .fm-texto ol { margin: 0 0 0.6em; padding-left: 1.4em; }
+.fm-texto.folha-vazia::before { content: attr(data-placeholder); position: absolute; font-style: italic; color: #C9B3BB; pointer-events: none; }
+.janela-ficha .acoes { align-items: center; margin-top: 12px; }
+.janela-ficha .acoes .link.perigo { margin-right: auto; }
+.fm-status { font-size: 0.8rem; font-weight: 700; color: var(--texto-suave); }

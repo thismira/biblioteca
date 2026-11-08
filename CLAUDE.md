@@ -408,6 +408,21 @@ estiver pronto** — trabalhar sempre na branch `escritorio`.
 - Testes no preview com abas em segundo plano: o navegador adia eventos
   (`close` de dialog, teclado). Trazer a aba de teste para a frente quando
   o painel estiver escondido (e devolver a aba do dono no fim).
+- Mundo (aba, `world.js` + `world-card.js`): seções = divisórias verdes
+  (abrir/fechar só na memória, renomear, apagar com confirmação; nome
+  repetido é recusado); sugestões (`db.WORLD_SUGGESTIONS`: Lugares, Magia
+  & regras, Povos & culturas, História & linha do tempo, Objetos,
+  Glossário) só viram seção quando ela clica. Fichas = cartões pautados
+  (título, resumo, miniatura). Busca no título e no texto, sem acentos,
+  Esc limpa. Janela da ficha: título, imagem opcional (Storage
+  `<storyId>/mundo/<fichaId>/…`, sem recorte), texto com N/I/lista (colar
+  passa pelo sanitize), salva 800 ms após parar e ao fechar; ficha NOVA
+  que fica vazia é apagada ao fechar. Formato: `story.world = [{ id, name,
+  cards: [{ id, title, html, image, createdAt, updatedAt }] }]`. Apagar
+  ficha/seção/história apaga as imagens (`worldFiles`).
+- Painel do navegador escondido = screenshots falham ("not compositing"):
+  conferir o desenho por medidas (getBoundingClientRect) ou pedir para
+  mostrar o painel.
 - Banco: `supabase/schema-escritorio.sql` (já rodado): `stories`,
   `chapters` (FK com cascade) e bucket privado `escritorio` (pasta por
   usuária). Não usar `settings` para nada do escritório.

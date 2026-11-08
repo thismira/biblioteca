@@ -9,6 +9,7 @@ import { confirmDialog, toast } from "../ui/dialogs.js";
 import { COVERS, paintNotebook } from "./notebook.js";
 import { createChapterList } from "./chapters.js";
 import { createCharacterBoard } from "./characters.js";
+import { createWorld } from "./world.js";
 
 export const TABS = [
   ["manuscrito", "Manuscrito", "#FCF7EF"],
@@ -61,6 +62,7 @@ export function createStoryPage(root, { onBack, onDeleted, onOpenChapter, onOpen
 
   const chapterList = createChapterList({ onOpen: (id, chapterId) => onOpenChapter(id, chapterId) });
   const characterBoard = createCharacterBoard({ onOpen: (id, characterId) => onOpenCharacter(id, characterId) });
+  const worldTab = createWorld();
 
   const story = () => db.getStory(storyId);
   const save = (changes) =>
@@ -118,6 +120,11 @@ export function createStoryPage(root, { onBack, onDeleted, onOpenChapter, onOpen
     if (tab === "personagens") {
       if (box.firstElementChild !== characterBoard.el) box.replaceChildren(characterBoard.el);
       characterBoard.show(storyId);
+      return;
+    }
+    if (tab === "mundo") {
+      if (box.firstElementChild !== worldTab.el) box.replaceChildren(worldTab.el);
+      worldTab.show(storyId);
       return;
     }
     const name = TABS.find(([v]) => v === tab)[1];
