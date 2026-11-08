@@ -10,6 +10,8 @@ import { COVERS, paintNotebook } from "./notebook.js";
 import { createChapterList } from "./chapters.js";
 import { createCharacterBoard } from "./characters.js";
 import { createWorld } from "./world.js";
+import { createQuotes } from "../ui/quotes.js";
+import { createPlaylist } from "../ui/playlist.js";
 
 export const TABS = [
   ["manuscrito", "Manuscrito", "#FCF7EF"],
@@ -64,6 +66,30 @@ export function createStoryPage(root, { onBack, onDeleted, onOpenChapter, onOpen
   const characterBoard = createCharacterBoard({ onOpen: (id, characterId) => onOpenCharacter(id, characterId) });
   const worldTab = createWorld();
 
+  // Playlist e Best quotes da história (as mesmas peças dos livros).
+  const saveQuietly = (changes) => save(changes);
+  const playlistEl = document.createElement("div");
+  playlistEl.className = "aba-playlist";
+  playlistEl.innerHTML = `<h2 class="aba-titulo">Playlist</h2><p class="aba-dica">A trilha sonora da história. Dê play e abra um capítulo: a música continua enquanto ela escreve. 🎧</p><div></div>`;
+  const playlist = createPlaylist(playlistEl.lastElementChild, {
+    getBook: () => story(),
+    save: saveQuietly,
+    frameTitle: "Playlist da história no Spotify",
+    removeMessage: "O link do Spotify desta história será apagado (a playlist continua existindo no Spotify).",
+  });
+  const quotesEl = document.createElement("div");
+  quotesEl.className = "aba-quotes";
+  quotesEl.innerHTML = `<h2 class="aba-titulo">Best quotes</h2><div></div>`;
+  const quotes = createQuotes(quotesEl.lastElementChild, {
+    getBook: () => story(),
+    save: saveQuietly,
+    chapters: () => db.getChapters(storyId),
+    photo: false,
+    emptyText: "Nenhuma best quote ainda. No editor, selecione um trecho e toque em ⭐ Best quote — ou escreva aqui. ✨",
+    placeholder: "Aquele trecho da história que você mais ama…",
+  });
+  let freshTab = true; // a aba precisa ser redesenhada (abriu agora ou mudou de fora)
+
   const story = () => db.getStory(storyId);
   const save = (changes) =>
     db.updateStory(storyId, changes).catch((err) => toast(err.message));
@@ -108,7 +134,7 @@ export function createStoryPage(root, { onBack, onDeleted, onOpenChapter, onOpen
     });
   }
 
-  // Manuscrito: a lista de capítulos. As outras abas chegam nas próximas etapas.
+  // O conteúdo da aba escolhida nas divisórias.
   function renderTab() {
     renderTabs();
     const box = $(".aba-conteudo");
@@ -127,13 +153,25 @@ export function createStoryPage(root, { onBack, onDeleted, onOpenChapter, onOpen
       worldTab.show(storyId);
       return;
     }
-    const name = TABS.find(([v]) => v === tab)[1];
-    $(".aba-conteudo").innerHTML = `<h2 class="aba-titulo"></h2><p class="aba-em-breve">Em construção ✨</p>`;
-    $(".aba-titulo").textContent = name;
+    if (tab === "playlist") {
+      if (box.firstElementChild !== playlistEl) box.replaceChildren(playlistEl);
+      playlist.render(); // (não recria o player se o link é o mesmo)
+      return;
+    }
+    if (tab === "quotes") {
+      // Só redesenha ao abrir a aba (redesenhar a cada gravação fecharia a edição).
+      if (box.firstElementChild !== quotesEl || freshTab) {
+        box.replaceChildren(quotesEl);
+        quotes.render();
+        freshTab = false;
+        db.loadChapters(storyId).then(() => tab === "quotes" && quotes.render()).catch(() => {});
+      }
+    }
   }
 
   function show(id, tabName = "manuscrito") {
     const changed = id !== storyId;
+    freshTab = true;
     storyId = id;
     tab = TABS.some(([v]) => v === tabName) ? tabName : "manuscrito";
     if (changed) {
@@ -198,6 +236,7 @@ export function createStoryPage(root, { onBack, onDeleted, onOpenChapter, onOpen
     else if (el.dataset.cor) save({ color: el.dataset.cor });
     else if (el.dataset.aba) {
       tab = el.dataset.aba;
+      freshTab = true;
       // Troca de aba não enche o "voltar" do navegador.
       history.replaceState(null, "", `#/historia/${storyId}${tab === "manuscrito" ? "" : "/" + tab}`);
       renderTab();
@@ -235,6 +274,11 @@ export function createStoryPage(root, { onBack, onDeleted, onOpenChapter, onOpen
 
   return {
     show,
+    // Desliga a música da história (ao voltar para a mesa ou sair do escritório).
+    stopMusic() {
+      playlist.stop();
+      if ($(".aba-conteudo").firstElementChild === playlistEl) $(".aba-conteudo").replaceChildren();
+    },
     get storyId() { return storyId; },
     book: () => $(".esc-aberto"),
   };

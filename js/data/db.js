@@ -644,6 +644,18 @@ export async function removeAlbumPhoto(storyId, id, path) {
   if (c.cover?.path !== path) removePhotosQuietly([path]);
 }
 
+// Trecho guardado pelo editor ("⭐ Best quote" / "Dar a um personagem").
+const newQuote = (text, chapterId) => ({ id: newId(), text, chapterId: chapterId || null, createdAt: new Date().toISOString() });
+
+export function addStoryQuote(storyId, text, chapterId) {
+  return updateStory(storyId, { quotes: [...getStory(storyId).quotes, newQuote(text, chapterId)] });
+}
+
+export function addCharacterQuote(storyId, characterId, text, chapterId) {
+  const c = getCharacter(storyId, characterId);
+  return updateCharacter(storyId, characterId, { quotes: [...c.quotes, newQuote(text, chapterId)] });
+}
+
 // Traits já usados em qualquer história (para sugerir nos chips).
 export function getAllTraits() {
   const all = new Set();

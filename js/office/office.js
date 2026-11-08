@@ -351,6 +351,7 @@ const fromRect = (from, to) => ({
 async function showDesk() {
   closeEditor();
   closeCharacter();
+  storyPage.stopMusic(); // a playlist da história para
   const previous = !storyEl.hidden ? storyPage.storyId : null;
   const from = previous ? storyPage.book().getBoundingClientRect() : null;
   storyEl.hidden = true;
@@ -454,6 +455,7 @@ export async function leaveOffice() {
   storyOpenedByClick = false;
   closeEditor();
   closeCharacter();
+  storyPage.stopMusic();
   await slide([root], library, -1, () => {
     document.body.classList.remove("no-escritorio");
     window.scrollTo(0, libraryScroll);

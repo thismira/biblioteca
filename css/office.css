@@ -1102,3 +1102,8 @@ dialog.album-visor::backdrop { background: transparent; }
 .mundo-fotos .ms-nome { background: #F3CCD6; }
 .mundo-fotos-corpo { padding-top: 10px; }
 .mundo-fotos .album { columns: 3 100px; }
+
+/* abas Playlist e Best quotes da história */
+.aba-dica { margin: 0 0 14px; font-size: 0.9rem; color: var(--texto-suave); line-height: 1.45; }
+.esc-pag.dir:has(.aba-playlist, .aba-quotes) { background-image: none; } /* sem pautas atrás do player e do carrossel */
+.aba-quotes .quote-linha select.quote-capitulo { width: auto; max-width: 240px; padding: 6px 8px; }

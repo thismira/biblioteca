@@ -133,6 +133,10 @@ export function createEditor(root, { onBack, onOpenChapter }) {
       </div>
     </div>
     <footer class="ed-rodape"><span class="ed-pagina"></span><span class="ed-contagem"></span></footer>
+    <div class="ed-balao" role="toolbar" aria-label="Guardar o trecho selecionado" hidden>
+      <button type="button" data-guardar="quote">⭐ Best quote</button>
+      <button type="button" data-guardar="personagem">Dar a um personagem</button>
+    </div>
     <button class="ed-sair-foco" type="button" data-acao="foco">Sair do foco</button>
     <style class="ed-quebras"></style>`;
 
@@ -576,6 +580,7 @@ export function createEditor(root, { onBack, onOpenChapter }) {
     chapterId = null;
     base = null;
     lastRange = null;
+    bubble.hidden = true;
   }
 
   // ---------- Escrever ----------
@@ -693,6 +698,75 @@ export function createEditor(root, { onBack, onOpenChapter }) {
     const next = dir > 0 ? SIZES.find((s) => s > current) : [...SIZES].reverse().find((s) => s < current);
     if (next) setLayout({ size: next });
   }
+
+  // ---------- Guardar um trecho (balão sobre a seleção) ----------
+  // Selecionou um pedaço do texto: "⭐ Best quote" vai para as best quotes
+  // da história, "Dar a um personagem" para os quotes dele. O texto do
+  // capítulo não muda (é uma cópia), e o trecho leva o capítulo junto.
+
+  const bubble = $(".ed-balao");
+  const selectedText = () => {
+    const sel = getSelection();
+    if (!sel.rangeCount || sel.isCollapsed || !text.contains(sel.anchorNode) || !text.contains(sel.focusNode)) return "";
+    return sel.toString().replace(/\u00a0/g, " ").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  };
+
+  function placeBubble() {
+    const piece = selectedText();
+    if (!base || root.hidden || piece.length < 2) {
+      bubble.hidden = true;
+      return;
+    }
+    const rect = getSelection().getRangeAt(0).getBoundingClientRect();
+    bubble.hidden = false;
+    const top = $(".ed-cabecalho").getBoundingClientRect().bottom;
+    const above = rect.top - bubble.offsetHeight - 10;
+    bubble.style.top = `${above > top + 6 ? above : rect.bottom + 10}px`;
+    const left = rect.left + rect.width / 2 - bubble.offsetWidth / 2;
+    bubble.style.left = `${Math.max(8, Math.min(left, innerWidth - bubble.offsetWidth - 8))}px`;
+  }
+  let bubbleFrame = 0;
+  const placeSoon = () => {
+    cancelAnimationFrame(bubbleFrame);
+    bubbleFrame = requestAnimationFrame(placeBubble);
+  };
+  document.addEventListener("selectionchange", () => !root.hidden && placeSoon());
+  window.addEventListener("scroll", () => !bubble.hidden && placeSoon(), { passive: true });
+
+  // apertar o balão não desfaz a seleção
+  bubble.addEventListener("pointerdown", (e) => e.preventDefault());
+  bubble.addEventListener("click", async (event) => {
+    const kind = event.target.closest("[data-guardar]")?.dataset.guardar;
+    const piece = selectedText();
+    if (!kind || !piece || !base) return;
+    const sId = storyId;
+    const cId = chapterId;
+    try {
+      if (kind === "quote") {
+        await db.addStoryQuote(sId, piece, cId);
+        toast("Guardado nas Best quotes ⭐");
+      } else {
+        const characters = db.getStory(sId).characters;
+        if (!characters.length) {
+          toast("Essa história ainda não tem personagens. Crie um na aba Personagens.");
+          return;
+        }
+        const preview = piece.length > 90 ? piece.slice(0, 90) + "…" : piece;
+        const chosen = await chooseDialog({
+          title: "Dar este trecho a qual personagem?",
+          message: `“${preview}”`,
+          options: characters.map((c) => ({ text: c.name || "Sem nome", value: c.id })),
+        });
+        if (!chosen) return;
+        await db.addCharacterQuote(sId, chosen, piece, cId);
+        toast(`Guardado nos quotes de ${db.getCharacter(sId, chosen)?.name || "personagem"} ✨`);
+      }
+      getSelection().collapseToEnd();
+      bubble.hidden = true;
+    } catch (err) {
+      toast(err.message);
+    }
+  });
 
   // ---------- Sumário e modo foco ----------
 

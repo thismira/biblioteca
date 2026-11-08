@@ -408,6 +408,15 @@ estiver pronto** — trabalhar sempre na branch `escritorio`.
 - Testes no preview com abas em segundo plano: o navegador adia eventos
   (`close` de dialog, teclado). Trazer a aba de teste para a frente quando
   o painel estiver escondido (e devolver a aba do dono no fim).
+- Abas Playlist e Best quotes da história (story-page.js): `createPlaylist`
+  (`story.spotifyUrl`) e `createQuotes` com `chapters` (`story.quotes`).
+  Os quotes só são redesenhados ao abrir a aba (`freshTab`). A música
+  continua ao abrir um capítulo ou personagem (a aba fica escondida, não é
+  removida) e para na mesa e ao sair do escritório (`storyPage.stopMusic`).
+- Editor: selecionar um trecho mostra o balão `.ed-balao` ("⭐ Best quote" →
+  `db.addStoryQuote`; "Dar a um personagem" → `chooseDialog` com os
+  personagens → `db.addCharacterQuote`). Cópia do trecho, com o capítulo;
+  o texto não muda. O balão fica acima da seleção (abaixo se não couber).
 - `album.js` (`createAlbum`): mural de fotos + visor (setas/teclado/
   arrastar, apagar com confirmação; opção `cover` = "★ Usar como capa").
   Usado pelo personagem (álbum + capa) e pelo Mundo (fotos do mundo).
