@@ -61,3 +61,26 @@ export async function replaceAll({ books, settings }) {
   write(KEY_BOOKS, books);
   write(KEY_SETTINGS, settings);
 }
+
+// ---------- Escritório: rascunhos dos capítulos ----------
+// Cópia do texto guardada NESTE aparelho antes de cada envio para a nuvem
+// (se a internet cair ou a página fechar no meio, nada se perde). Some
+// depois que a nuvem confirma. Funções síncronas: precisam funcionar
+// também no instante em que a página está fechando.
+const draftKey = (chapterId) => `minha-biblioteca:rascunho:${chapterId}`;
+
+export function saveDraft(chapterId, draft) {
+  write(draftKey(chapterId), draft);
+}
+
+export function loadDraft(chapterId) {
+  return read(draftKey(chapterId), null);
+}
+
+export function removeDraft(chapterId) {
+  try {
+    localStorage.removeItem(draftKey(chapterId));
+  } catch {
+    // sem acesso ao armazenamento: nada a apagar
+  }
+}

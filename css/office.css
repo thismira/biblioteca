@@ -17,7 +17,7 @@
   position: relative;
   min-height: 100vh;
   min-height: 100dvh;
-  overflow: hidden;
+  overflow: clip; /* corta os objetos da mesa sem impedir barras "sticky" (hidden impediria) */
   background-color: var(--mad-1);
   background-image:
     repeating-linear-gradient(90deg, transparent 0 calc(240px - 1px), var(--mad-junta) calc(240px - 1px) 240px),
@@ -310,6 +310,7 @@ body.no-escritorio { background: #E9D5BC; }
 .esc-postit:hover { transform: rotate(-2deg) translateY(-3px); }
 .esc-postit small { display: block; margin-bottom: 4px; font: 700 0.62rem var(--fonte-texto); letter-spacing: 0.8px; text-transform: uppercase; color: #8A7240; }
 .esc-postit b { display: block; font: 600 1.45rem/1.05 var(--manuscrita); color: var(--acento); }
+.esc-postit span { display: block; margin-top: 6px; font: 500 1.05rem/1.1 var(--manuscrita); color: #8A7240; }
 
 /* Telas estreitas: objetos saem, o resto se reorganiza */
 @media (max-width: 1000px) {

@@ -141,18 +141,33 @@ export async function loadChapterList(storyId) {
 }
 
 export async function loadChapter(id) {
-  const res = await supabase.from("chapters").select("data").eq("id", id).maybeSingle();
+  const res = await supabase.from("chapters").select("data, updated_at").eq("id", id).maybeSingle();
   check(res);
-  return res.data?.data || null;
+  if (!res.data) return null;
+  // `updatedAt` = a hora gravada no banco (usada para perceber outro aparelho).
+  return { ...res.data.data, updatedAt: new Date(res.data.updated_at).toISOString() };
 }
 
-export async function putChapter(chapter) {
+// Grava o capítulo. Com `expectedUpdatedAt`, só grava se ninguém (outro
+// aparelho) salvou depois disso: devolve false quando houve conflito.
+export async function putChapter(chapter, expectedUpdatedAt) {
   return enqueue(`capitulo:${chapter.id}`, async () => {
     const uid = await userId();
-    check(await supabase.from("chapters").upsert(
-      { ...row(uid, chapter), story_id: chapter.storyId },
-      { onConflict: "user_id,id" }
-    ));
+    if (!expectedUpdatedAt) {
+      check(await supabase.from("chapters").upsert(
+        { user_id: uid, id: chapter.id, story_id: chapter.storyId, data: chapter, updated_at: chapter.updatedAt },
+        { onConflict: "user_id,id" }
+      ));
+      return true;
+    }
+    const res = await supabase.from("chapters")
+      .update({ data: chapter, updated_at: chapter.updatedAt })
+      .eq("user_id", uid)
+      .eq("id", chapter.id)
+      .eq("updated_at", new Date(expectedUpdatedAt).toISOString())
+      .select("id");
+    check(res);
+    return res.data.length > 0;
   });
 }
 

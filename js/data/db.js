@@ -271,6 +271,8 @@ function storyDefaults(fields) {
     world: [],
     quotes: [],
     spotifyUrl: "",
+    writingDays: {},    // { "2026-11-07": palavras escritas nesse dia }
+    lastEdit: null,     // { chapterId, title, at } — "Continuar escrevendo"
     createdAt: now,
     updatedAt: now,
     ...fields,
@@ -332,7 +334,10 @@ export async function updateStory(id, changes) {
 export async function deleteStory(id) {
   await store.removeStory(id);
   stories = stories.filter((s) => s.id !== id);
-  (chapterLists.get(id) || []).forEach((c) => fullChapters.delete(c.id));
+  (chapterLists.get(id) || []).forEach((c) => {
+    fullChapters.delete(c.id);
+    local.removeDraft(c.id);
+  });
   chapterLists.delete(id);
   chapterListsLoading.delete(id);
   notifyStories();
@@ -409,23 +414,88 @@ export async function addChapter(storyId, title) {
   return chapter;
 }
 
-// Grava o capítulo inteiro (título, texto, palavras).
+// Dia de hoje no fuso dela ("2026-11-07").
+const today = () => new Date().toLocaleDateString("sv-SE");
+const DAYS_KEPT = 120; // dias guardados no "palavras escritas por dia"
+
+// Grava o capítulo inteiro (título, texto, palavras). Só grava se nenhum
+// outro aparelho salvou este capítulo depois da versão que está aberta
+// aqui; se salvou, lança um erro com `conflict: true` (ver keepBothVersions).
 export async function saveChapter(storyId, changes) {
   const current = await getChapter(changes.id);
   if (!current) throw new Error("Esse capítulo não existe mais.");
   const chapter = { ...current, ...changes, updatedAt: new Date().toISOString() };
-  await store.putChapter(chapter);
+  const ok = await store.putChapter(chapter, current.updatedAt);
+  if (!ok) {
+    const err = new Error("Este capítulo foi alterado em outro aparelho.");
+    err.conflict = true;
+    throw err;
+  }
   fullChapters.set(chapter.id, chapter);
   setChapterMeta(storyId, chapter);
+
+  const story = getStory(storyId);
+  if (!story) return chapter;
+  const storyChanges = {};
   const words = totalWords(storyId);
-  if (words !== getStory(storyId)?.words) await updateStory(storyId, { words });
+  if (words !== story.words) storyChanges.words = words;
+  if ("html" in changes) {
+    // Palavras escritas hoje (o que ela apagou desconta, sem ficar negativo).
+    const delta = chapter.words - current.words;
+    if (delta) {
+      const days = { ...story.writingDays, [today()]: Math.max(0, (story.writingDays[today()] || 0) + delta) };
+      const keep = Object.keys(days).sort().slice(-DAYS_KEPT);
+      storyChanges.writingDays = Object.fromEntries(keep.map((d) => [d, days[d]]));
+    }
+    // Para o post-it "Continuar escrevendo".
+    storyChanges.lastEdit = { chapterId: chapter.id, title: chapter.title, at: chapter.updatedAt };
+  }
+  if (Object.keys(storyChanges).length) await updateStory(storyId, storyChanges);
   else notifyStories();
   return chapter;
 }
 
-export function renameChapter(storyId, id, title) {
-  return saveChapter(storyId, { id, title });
+// Palavras que ela escreveu hoje nesta história.
+export const wordsToday = (storyId) => getStory(storyId)?.writingDays[today()] || 0;
+
+// Conflito: outro aparelho salvou este capítulo. Nada é perdido: a versão da
+// nuvem continua no capítulo e a deste aparelho (`mine`) vira um capítulo
+// novo logo depois dele, "(cópia deste aparelho)". Ela escolhe qual fica.
+export async function keepBothVersions(storyId, mine) {
+  fullChapters.delete(mine.id);
+  const cloud = await getChapter(mine.id); // null se foi apagado no outro aparelho
+  const now = new Date().toISOString();
+  const copy = {
+    id: newId(), storyId, title: `${mine.title || "Sem título"} (cópia deste aparelho)`,
+    html: mine.html, words: mine.words, createdAt: now, updatedAt: now,
+  };
+  await store.putChapter(copy);
+  fullChapters.set(copy.id, copy);
+  setChapterMeta(storyId, copy);
+  if (cloud) setChapterMeta(storyId, cloud);
+  else chapterLists.set(storyId, (chapterLists.get(storyId) || []).filter((c) => c.id !== mine.id));
+  const order = getStory(storyId).chapterOrder.filter((id) => cloud || id !== mine.id);
+  const at = order.indexOf(mine.id);
+  order.splice(at >= 0 ? at + 1 : order.length, 0, copy.id);
+  await updateStory(storyId, { chapterOrder: order, words: totalWords(storyId) });
+  return { cloud, copy };
 }
+
+export async function renameChapter(storyId, id, title) {
+  try {
+    return await saveChapter(storyId, { id, title });
+  } catch (err) {
+    if (!err.conflict) throw err;
+    // Trocar só o nome: pega a versão mais nova e tenta de novo.
+    fullChapters.delete(id);
+    return saveChapter(storyId, { id, title });
+  }
+}
+
+// Rascunho deste aparelho (texto ainda não confirmado pela nuvem).
+export const getChapterDraft = (id) => local.loadDraft(id);
+export const saveChapterDraft = (id, draft) => local.saveDraft(id, draft);
+export const discardChapterDraft = (id) => local.removeDraft(id);
 
 // A nova ordem dos capítulos (depois de arrastar).
 export function moveChapters(storyId, ids) {
@@ -436,6 +506,7 @@ export function moveChapters(storyId, ids) {
 export async function deleteChapter(storyId, id) {
   await store.removeChapter(id);
   fullChapters.delete(id);
+  local.removeDraft(id);
   chapterLists.set(storyId, (chapterLists.get(storyId) || []).filter((c) => c.id !== id));
   const story = getStory(storyId);
   await updateStory(storyId, {

@@ -1,8 +1,8 @@
 // O escritório (M’s Workspace): a sala onde ela guarda e escreve as próprias
 // histórias. Fica numa tela só dele — a biblioteca some e a mesa aparece.
 //
-// Endereços: #/escritorio (a mesa) e #/historia/<id>[/<aba>] (o caderno
-// aberto). O roteador de main.js só pergunta `isOfficeHash()` e chama
+// Endereços: #/escritorio (a mesa), #/historia/<id>[/<aba>] (o caderno
+// aberto) e #/historia/<id>/capitulo/<id> (o editor de escrita). O roteador de main.js só pergunta `isOfficeHash()` e chama
 // `enterOffice()` / `leaveOffice()`; daqui para dentro é tudo aqui.
 
 import * as db from "../data/db.js";
@@ -11,6 +11,7 @@ import { flipReorder } from "../ui/flip.js";
 import { promptDialog, toast } from "../ui/dialogs.js";
 import { paintNotebook, nextCover } from "./notebook.js";
 import { createStoryPage } from "./story-page.js";
+import { createEditor } from "./editor.js";
 
 const root = document.getElementById("escritorio");
 // O que pertence à biblioteca (some enquanto o escritório está aberto).
@@ -21,6 +22,8 @@ let enteredByClick = false; // veio pelo botão? então "← Biblioteca" = volta
 let libraryScroll = 0;      // a biblioteca volta para onde estava
 let storyOpenedByClick = false;
 let clickedNotebook = null; // caderno clicado (a página da história cresce dele)
+let chapterOpenedByClick = false; // "← Manuscrito" = voltar
+let openAtEnd = false;            // "Continuar escrevendo": cursor no fim do texto
 
 // Filtros da mesa (só na memória): status e gênero. null = todos.
 let statusFilter = null;
@@ -59,11 +62,15 @@ root.innerHTML = `
     <div class="esc-obj esc-oculos" aria-hidden="true"><i></i><i></i><b></b></div>
     <div class="esc-obj esc-clipe" style="left:210px;bottom:60px;--r:24deg" aria-hidden="true"></div>
     <div class="esc-obj esc-clipe" style="left:240px;bottom:46px;--r:-12deg" aria-hidden="true"></div>
+    <button class="esc-postit" type="button" data-acao="continuar" hidden><small>Continuar escrevendo</small><b></b><span></span></button>
   </div>
-  <div class="esc-historia" hidden></div>`;
+  <div class="esc-historia" hidden></div>
+  <div class="esc-editor" hidden></div>`;
 
 const deskEl = root.querySelector(".esc-mesa");
 const storyEl = root.querySelector(".esc-historia");
+const editorEl = root.querySelector(".esc-editor");
+const postit = root.querySelector(".esc-postit");
 const shelfEl = root.querySelector(".esc-cadernos");
 const filtersEl = root.querySelector(".esc-filtros");
 const notebooks = new Map(); // id -> botão-caderno (reaproveitados, para o FLIP)
@@ -84,8 +91,12 @@ const storyPage = createStoryPage(storyEl, {
     history.replaceState(null, "", "#/escritorio");
     routeOffice();
   },
-  // O editor de escrita chega na próxima etapa.
-  onOpenChapter: () => toast("O editor de escrita chega na próxima etapa ✨"),
+  onOpenChapter: (id, chapterId) => openChapter(id, chapterId),
+});
+
+const editor = createEditor(editorEl, {
+  onBack: backToStory,
+  onOpenChapter: openChapter,
 });
 
 function visibleStories() {
@@ -131,6 +142,23 @@ function renderDesk() {
   });
   shelfEl.replaceChildren(newButton, ...elements);
   root.querySelector(".esc-nada").hidden = list.length > 0 || db.getStories().length === 0;
+  renderPostit();
+}
+
+// Post-it "Continuar escrevendo": o último capítulo em que ela escreveu.
+function lastWritten() {
+  return db.getStories()
+    .filter((s) => s.lastEdit && s.chapterOrder.includes(s.lastEdit.chapterId))
+    .sort((a, b) => b.lastEdit.at.localeCompare(a.lastEdit.at))[0] || null;
+}
+
+function renderPostit() {
+  const story = lastWritten();
+  postit.hidden = !story;
+  if (!story) return;
+  postit.querySelector("b").textContent = story.lastEdit.title || "Sem título";
+  postit.querySelector("span").textContent = story.title || "Sem título";
+  postit.setAttribute("aria-label", `Continuar escrevendo: ${story.lastEdit.title || "Sem título"}, de ${story.title || "Sem título"}`);
 }
 
 const refilter = () => flipReorder(notebooks, renderDesk);
@@ -190,6 +218,57 @@ function backToDesk() {
   }
 }
 
+// ---------- Abrir e fechar um capítulo (o editor) ----------
+
+// `replace`: troca de capítulo sem encher o "voltar" (anterior/próximo).
+function openChapter(id, chapterId, { replace = false, atEnd = false } = {}) {
+  openAtEnd = atEnd;
+  const hash = `#/historia/${id}/capitulo/${chapterId}`;
+  if (replace) {
+    history.replaceState(null, "", hash);
+    routeOffice();
+  } else {
+    chapterOpenedByClick = true;
+    location.hash = hash;
+  }
+}
+
+function backToStory() {
+  const id = location.hash.match(/^#\/historia\/([\w-]+)/)?.[1];
+  if (chapterOpenedByClick) history.back();
+  else {
+    history.replaceState(null, "", id ? `#/historia/${id}` : "#/escritorio");
+    routeOffice();
+  }
+}
+
+async function showEditor(id, chapterId) {
+  const wasHidden = editorEl.hidden;
+  deskEl.hidden = true;
+  storyEl.hidden = true;
+  editorEl.hidden = false;
+  const opening = editor.open(id, chapterId, { atEnd: openAtEnd });
+  openAtEnd = false;
+  if (!wasHidden) return opening;
+  window.scrollTo(0, 0);
+  // A folha sobe devagar até o lugar.
+  if (!reducedMotion()) {
+    editor.sheet().animate(
+      [{ transform: "translateY(28px)", opacity: 0 }, { transform: "none", opacity: 1 }],
+      { duration: 380, easing: "cubic-bezier(.2,.8,.2,1)" }
+    );
+  }
+  return opening;
+}
+
+// Saiu do editor: salva o que faltar (sem esperar para trocar de tela).
+function closeEditor() {
+  if (editorEl.hidden) return;
+  chapterOpenedByClick = false;
+  editorEl.hidden = true;
+  editor.close().catch((err) => toast(err.message));
+}
+
 // FLIP de tamanho: o elemento parece começar no retângulo `from`.
 const fromRect = (from, to) => ({
   transform: `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${from.width / to.width}, ${from.height / to.height})`,
@@ -197,6 +276,7 @@ const fromRect = (from, to) => ({
 });
 
 async function showDesk() {
+  closeEditor();
   const previous = !storyEl.hidden ? storyPage.storyId : null;
   const from = previous ? storyPage.book().getBoundingClientRect() : null;
   storyEl.hidden = true;
@@ -213,6 +293,10 @@ async function showDesk() {
 }
 
 async function showStory(id, tab) {
+  if (!editorEl.hidden) {
+    closeEditor();
+    window.scrollTo(0, 0);
+  }
   const from = clickedNotebook?.isConnected ? clickedNotebook.getBoundingClientRect() : null;
   clickedNotebook = null;
   const wasDesk = !deskEl.hidden;
@@ -232,6 +316,8 @@ async function showStory(id, tab) {
 
 // Mostra a mesa ou a história, conforme o endereço.
 function routeOffice() {
+  const chapter = location.hash.match(/^#\/historia\/([\w-]+)\/capitulo\/([\w-]+)$/);
+  if (chapter && db.getStory(chapter[1])) return showEditor(chapter[1], chapter[2]);
   const match = location.hash.match(/^#\/historia\/([\w-]+)(?:\/(\w+))?$/);
   if (match && db.getStory(match[1])) return showStory(match[1], match[2]);
   if (match) history.replaceState(null, "", "#/escritorio"); // história que não existe mais
@@ -289,6 +375,7 @@ export async function leaveOffice() {
   open = false;
   enteredByClick = false;
   storyOpenedByClick = false;
+  closeEditor();
   await slide([root], library, -1, () => {
     document.body.classList.remove("no-escritorio");
     window.scrollTo(0, libraryScroll);
@@ -302,6 +389,14 @@ deskEl.addEventListener("click", (event) => {
   if (action === "biblioteca") backToLibrary();
   else if (action === "nova") createStory();
   else if (action === "importar") toast("Isso chega numa próxima etapa ✨");
+  else if (action === "continuar") {
+    const story = lastWritten();
+    if (!story) return;
+    // "Voltar" do editor leva ao Manuscrito da história (e depois à mesa).
+    storyOpenedByClick = true;
+    history.pushState(null, "", `#/historia/${story.id}`);
+    openChapter(story.id, story.lastEdit.chapterId, { atEnd: true });
+  }
 });
 
 // Mudou alguma história (ex.: salvou na página dela): a mesa acompanha.

@@ -291,6 +291,40 @@ estiver pronto** — trabalhar sempre na branch `escritorio`.
   `saveChapter` (recalcula `story.words`), `renameChapter`,
   `moveChapters`, `deleteChapter`. Formato: `{ id, storyId, title, html,
   words, createdAt, updatedAt }`.
+- Editor (`editor.js` + `css/editor.css`, rota
+  `#/historia/<id>/capitulo/<id>`): folha de papel, letra Lora, parágrafos
+  com recuo. `contenteditable` + `execCommand` (negrito, itálico, cena =
+  `formatBlock h3`, separador = `<hr>` desenhado como ✦ ✦ ✦, desfazer).
+  Barra presa no alto (`position: sticky` — por isso `.escritorio` usa
+  `overflow: clip`, não `hidden`). Rodapé fixo: status ("Salvo às…") e
+  palavras do capítulo / da história / hoje. Modo foco (Esc sai).
+  Anterior/próximo capítulo no fim da folha (trocam com `replaceState`).
+  Atenção: `.vazio` já existe no base.css — a folha vazia usa
+  `folha-vazia`.
+- Nunca perder texto: salva 1 s após parar de digitar, ao sair e no
+  `pagehide`/`visibilitychange`. Antes de cada envio grava o rascunho
+  NESTE aparelho (`local-store.js`: `saveDraft/loadDraft/removeDraft`,
+  síncronos; via `db.saveChapterDraft` etc.); a nuvem confirmou → apaga.
+  Falhou → "guardado neste aparelho", tenta de novo a cada 15 s e no
+  evento `online`. Ao abrir: rascunho diferente da nuvem → se a nuvem não
+  mudou desde o rascunho, recupera sozinho; se mudou, pergunta qual usar
+  (descartar pede confirmação). Testado com a rede bloqueada + recarregar.
+- Dois aparelhos: `store.putChapter(ch, expectedUpdatedAt)` só grava se o
+  `updated_at` do banco ainda for o da versão aberta (`update … eq
+  updated_at`); senão `saveChapter` lança `err.conflict` e
+  `db.keepBothVersions` guarda a versão daqui como capítulo novo
+  "(cópia deste aparelho)" logo depois. `loadChapter` usa o `updated_at`
+  do banco como `updatedAt`.
+- `sanitize.js`: tudo o que entra (colar, nuvem) vira só `p`, `h3`, `hr`,
+  `strong`, `em`, `br`; texto sempre escapado. Entende o Google Docs
+  (`<b style="font-weight:normal">` não é negrito; negrito/itálico vêm do
+  `style` dos spans); linhas "* * *", "***", "✦ ✦ ✦", "#" viram `<hr>`.
+  `countWords()` conta "guarda-chuva"/"d’água" como uma palavra.
+  20 mil palavras: contar 14 ms, limpar 3 ms.
+- História ganhou `writingDays` (palavras por dia, 120 dias; o que ela
+  apaga desconta) e `lastEdit` ({ chapterId, title, at }), usado pelo
+  post-it "Continuar escrevendo" da mesa (abre o capítulo com o cursor no
+  fim; "voltar" leva ao Manuscrito e depois à mesa).
 - Banco: `supabase/schema-escritorio.sql` (já rodado): `stories`,
   `chapters` (FK com cascade) e bucket privado `escritorio` (pasta por
   usuária). Não usar `settings` para nada do escritório.
