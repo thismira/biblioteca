@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -60 1000 480" class="dr-svg dr-dourado-lado" role="img" aria-label="Dragão dourado voando, de perfil">
+  <title>Dragão dourado voando, de perfil</title>
+  <defs>
+    <linearGradient id="ouro-corpo" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="#e3bd5f"/><stop offset="0.55" stop-color="#c79a3b"/><stop offset="1" stop-color="#a87a26"/>
+    </linearGradient>
+    <linearGradient id="ouro-membrana" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f1d58e"/><stop offset="1" stop-color="#dcb460"/>
+    </linearGradient>
+  </defs>
+  <g class="dr-asa dr-asa-tras" style="transform-origin:598.4px 253.8px; transform-box:view-box">
+    <g>
+      <path class="dr-membrana" d="M598.4,247.8 Q546.5,108 566.5,122 Q624,64.8 681.6,29.6 Q537.8,-76.8 363,-87.6 Q425.4,-11.5 288.7,27.8 Q406.6,76.2 341.2,151.5 Q459,152.2 451.2,218.6 Q476.2,211.9 482.8,238.9 Q616.4,246.4 598.4,267.8 Z" fill="#c9a14e"/>
+      <path d="M598.4,253.8 Q541.5,124 566.5,130" stroke="#9c7428" stroke-width="18" stroke-linecap="round" fill="none"/>
+      <path d="M566.5,130 Q624,72.8 681.6,35.6" stroke="#9c7428" stroke-width="12.6" stroke-linecap="round" fill="none"/>
+      <path d="M681.6,35.6 Q525.9,-35.3 363,-87.6" stroke="#9c7428" stroke-width="3.2" stroke-linecap="round" fill="none"/>
+      <path d="M681.6,35.6 L541.4,-28.2" stroke="#9c7428" stroke-width="7.2" stroke-linecap="round" fill="none"/>
+      <path d="M681.6,35.6 Q485.3,24.7 288.7,27.8" stroke="#9c7428" stroke-width="2.8" stroke-linecap="round" fill="none"/>
+      <path d="M681.6,35.6 L504.9,25.8" stroke="#9c7428" stroke-width="6.3" stroke-linecap="round" fill="none"/>
+      <path d="M681.6,35.6 Q510.1,89.8 341.2,151.5" stroke="#9c7428" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+      <path d="M681.6,35.6 L527.2,84.4" stroke="#9c7428" stroke-width="5.4" stroke-linecap="round" fill="none"/>
+      <path d="M681.6,35.6 Q565.1,125.5 451.2,218.6" stroke="#9c7428" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+      <path d="M681.6,35.6 L576.8,116.6" stroke="#9c7428" stroke-width="5" stroke-linecap="round" fill="none"/>
+      <path d="M681.6,35.6 Q720.5,35.8 712.5,25.8" stroke="#9c7428" stroke-width="6.9" stroke-linecap="round" fill="none"/>
+      <path d="M708.5,28.8 Q706.5,16.8 697.5,13.8 Q708.5,21.8 716.5,26.8 Z" fill="#9c7428"/>
+    </g>
+  </g>
+  <g class="dr-corpo">
+    <path d="M618,298 L610,330" stroke="#9c7428" stroke-width="14" stroke-linecap="round" fill="none"/>
+    <path d="M610,330 L634,348" stroke="#9c7428" stroke-width="9" stroke-linecap="round" fill="none"/>
+    <path d="M634,348 Q640.7,351 643.5,353.5" stroke="#9c7428" stroke-width="3.8" stroke-linecap="round" fill="none"/>
+    <path d="M634,348 Q641.5,349.1 644.8,349.9" stroke="#9c7428" stroke-width="3.8" stroke-linecap="round" fill="none"/>
+    <path d="M634,348 Q641.5,346.9 644.8,346.1" stroke="#9c7428" stroke-width="3.8" stroke-linecap="round" fill="none"/>
+    <path d="M458,304 L436,336" stroke="#9c7428" stroke-width="28" stroke-linecap="round" fill="none"/>
+    <path d="M436,336 L402,346" stroke="#9c7428" stroke-width="14" stroke-linecap="round" fill="none"/>
+    <path d="M402,346 L372,348" stroke="#9c7428" stroke-width="9" stroke-linecap="round" fill="none"/>
+    <path d="M372,348 Q365.9,349.3 358.2,350.4" stroke="#9c7428" stroke-width="3.8" stroke-linecap="round" fill="none"/>
+    <path d="M372,348 Q365.8,347.3 358.1,346.8" stroke="#9c7428" stroke-width="3.8" stroke-linecap="round" fill="none"/>
+    <path d="M372,348 Q366.3,345.4 358.8,343.2" stroke="#9c7428" stroke-width="3.8" stroke-linecap="round" fill="none"/>
+    <path d="M812.2,149 Q796.5,137.3 770,134 Q790.2,145.4 819.4,162.5 Z" fill="#9c7428"/><path d="M801.4,141 Q784.5,126.1 750,120 Q775.4,137.8 811.8,160.5 Z" fill="url(#ouro-corpo)"/>
+    <path d="M747.1,184.6 L741,178.2 L753.8,178.7 Z" fill="url(#ouro-corpo)"/><path d="M722.3,208.7 L715.6,202.6 L728.7,202.3 Z" fill="url(#ouro-corpo)"/><path d="M694.5,232 L687.9,225 L701.8,225.8 Z" fill="url(#ouro-corpo)"/><path d="M662.4,247.6 L656.5,238.7 L671.6,242.1 Z" fill="url(#ouro-corpo)"/><path d="M627.1,254.3 L622.2,243.3 L638.3,250 Z" fill="url(#ouro-corpo)"/><path d="M592.2,259.4 L589.2,247.7 L603.9,257 Z" fill="url(#ouro-corpo)"/><path d="M553.8,261.3 L552.4,249.4 L565.8,260.5 Z" fill="url(#ouro-corpo)"/><path d="M512,264.4 L511.4,252.4 L524,264.4 Z" fill="url(#ouro-corpo)"/><path d="M471.3,266.1 L471.3,254.1 L483.3,266.7 Z" fill="url(#ouro-corpo)"/><path d="M432.9,269.1 L432.6,257.7 L444.2,269.4 Z" fill="url(#ouro-corpo)"/><path d="M393.8,275.2 L392.5,265.1 L404,274.5 Z" fill="url(#ouro-corpo)"/><path d="M350.9,286.2 L348.2,277.1 L360,284 Z" fill="url(#ouro-corpo)"/><path d="M299.1,305 L296,296.5 L307.6,302.3 Z" fill="url(#ouro-corpo)"/><path d="M244.1,324.5 L241.5,316.4 L252.4,322.3 Z" fill="url(#ouro-corpo)"/><path d="M195.3,334.8 L194.1,326.6 L203.6,334 Z" fill="url(#ouro-corpo)"/>
+    <path d="M880.1,175.5 C877.5,173.9 870.3,168.9 864.3,165.6 C858.4,162.4 851.3,159.1 844.2,156.2 C837,153.3 829.6,149.4 821.4,148.1 C813.3,146.7 803.2,146 795,148.3 C786.8,150.6 779.9,156.7 772.3,162 C764.6,167.3 757.2,173.1 749.1,180.1 C741,187.1 732.7,196.1 723.9,203.9 C715.1,211.6 706.1,220.4 696.2,226.6 C686.4,232.8 675.7,237.8 664.8,241.1 C653.8,244.3 641.8,244.6 630.4,246.2 C619,247.8 608.4,249.6 596.5,250.7 C584.7,251.9 572.4,252.1 559.3,253.1 C546.2,254.1 531.6,255.8 518,257 C504.4,258.2 490.8,258.9 477.6,260 C464.4,261.2 451.9,262.2 438.7,264 C425.5,265.8 412.6,268 398.6,271.1 C384.6,274.1 370.8,277.3 354.8,282.4 C338.8,287.4 320.5,294.9 302.7,301.5 C284.9,308.1 265.1,316.5 247.8,321.8 C230.6,327 215.5,330.9 199.3,333 C183.1,335.2 166,336 150.7,334.5 C135.4,333.1 120.4,329 107.6,324.1 C94.8,319.3 83,311.8 73.9,305.5 C64.9,299.1 56.7,289 53.3,285.8 Q50.8,281.2 52.9,264.9 Q31,258.6 19.7,255.7 Q22.6,267 28.9,288.9 Q45.2,286.8 49.8,289.3 L49.8,289.3 C53.2,292.8 61,303.5 70.1,310.5 C79.2,317.6 91.2,326.1 104.4,331.9 C117.6,337.7 133.3,342.9 149.3,345.5 C165.4,348 183.6,348.2 200.7,347 C217.8,345.8 234.1,342.3 252.2,338.2 C270.3,334.1 291.1,327.3 309.3,322.5 C327.5,317.7 345.8,311.9 361.2,309.6 C376.5,307.4 388.7,307.9 401.4,308.9 C414.1,310 425.2,313.5 437.3,316 C449.5,318.5 461,321.5 474.4,324 C487.8,326.5 502.9,329.8 518,331 C533.1,332.2 549.1,331.9 564.7,330.9 C580.3,329.9 596.6,329.4 611.5,325.3 C626.3,321.1 641,313.5 653.6,305.8 C666.2,298.1 676.9,288.3 687.2,278.9 C697.6,269.5 706.9,259.2 715.8,249.4 C724.6,239.6 732.3,229 740.1,220.1 C748,211.2 755.6,202.3 762.9,195.9 C770.2,189.6 777.4,184.7 783.7,182 C790.1,179.3 795.2,180.1 801,179.7 C806.8,179.4 812.1,179.9 818.6,179.9 C825,179.9 832.6,180.1 839.8,179.8 C847,179.5 855,178.9 861.7,178.4 C868.3,177.8 876.8,176.8 879.9,176.5 Z" fill="url(#ouro-corpo)"/>
+    <path d="M806,180 Q840,190 862,182 L816,172 Z" fill="url(#ouro-corpo)"/>
+    <path d="M636,302 L624,336" stroke="#c08f35" stroke-width="17" stroke-linecap="round" fill="none"/>
+    <path d="M624,336 L648,358" stroke="#c08f35" stroke-width="11" stroke-linecap="round" fill="none"/>
+    <path d="M648,358 Q655.7,361.6 659.3,364.5" stroke="#c08f35" stroke-width="4.6" stroke-linecap="round" fill="none"/>
+    <path d="M648,358 Q656.5,359.2 660.8,360.3" stroke="#c08f35" stroke-width="4.6" stroke-linecap="round" fill="none"/>
+    <path d="M648,358 Q656.5,356.8 660.8,355.7" stroke="#c08f35" stroke-width="4.6" stroke-linecap="round" fill="none"/>
+    <path d="M476,310 L450,346" stroke="#c08f35" stroke-width="36" stroke-linecap="round" fill="none"/>
+    <path d="M450,346 L412,360" stroke="#c08f35" stroke-width="17" stroke-linecap="round" fill="none"/>
+    <path d="M412,360 L378,364" stroke="#c08f35" stroke-width="11" stroke-linecap="round" fill="none"/>
+    <path d="M378,364 Q370.8,365.5 362.2,366.8" stroke="#c08f35" stroke-width="4.6" stroke-linecap="round" fill="none"/>
+    <path d="M378,364 Q370.7,363.2 362.1,362.6" stroke="#c08f35" stroke-width="4.6" stroke-linecap="round" fill="none"/>
+    <path d="M378,364 Q371.2,361 363,358.5" stroke="#c08f35" stroke-width="4.6" stroke-linecap="round" fill="none"/>
+  </g>
+  <g class="dr-asa dr-asa-frente" style="transform-origin:596px 262px; transform-box:view-box">
+    <g>
+      <path class="dr-membrana" d="M596,256 Q504,118 524,132 Q571,54 618,-2 Q430,-72 240,-30 Q330,32.1 196,116 Q336.8,131.5 290,232 Q416,196.7 428,270 Q452.7,255.2 468,282 Q614,272 596,276 Z" fill="url(#ouro-membrana)"/>
+      <path d="M596,262 Q499,134 524,140" stroke="#b0832c" stroke-width="20" stroke-linecap="round" fill="none"/>
+      <path d="M524,140 Q571,62 618,4" stroke="#b0832c" stroke-width="14" stroke-linecap="round" fill="none"/>
+      <path d="M618,4 Q429.9,-23 240,-30" stroke="#b0832c" stroke-width="3.6" stroke-linecap="round" fill="none"/>
+      <path d="M618,4 L448.7,-20.3" stroke="#b0832c" stroke-width="8" stroke-linecap="round" fill="none"/>
+      <path d="M618,4 Q405.2,53.2 196,116" stroke="#b0832c" stroke-width="3.1" stroke-linecap="round" fill="none"/>
+      <path d="M618,4 L426.5,48.3" stroke="#b0832c" stroke-width="7" stroke-linecap="round" fill="none"/>
+      <path d="M618,4 Q451.7,114.7 290,232" stroke="#b0832c" stroke-width="2.7" stroke-linecap="round" fill="none"/>
+      <path d="M618,4 L468.3,103.6" stroke="#b0832c" stroke-width="6" stroke-linecap="round" fill="none"/>
+      <path d="M618,4 Q521.4,135.8 428,270" stroke="#b0832c" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+      <path d="M618,4 L531,122.7" stroke="#b0832c" stroke-width="5.5" stroke-linecap="round" fill="none"/>
+      <path d="M618,4 Q656,-6 648,-16" stroke="#b0832c" stroke-width="7.7" stroke-linecap="round" fill="none"/>
+      <path d="M644,-13 Q642,-25 633,-28 Q644,-20 652,-15 Z" fill="#b0832c"/>
+    </g>
+  </g>
+</svg>

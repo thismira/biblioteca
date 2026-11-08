@@ -16,6 +16,7 @@ import { createStoryPage } from "./story-page.js";
 import { createEditor } from "./editor.js";
 import { importFromDocs } from "./story-import.js";
 import { createCharacterPage } from "./character-page.js";
+import { createDragons } from "./dragons.js";
 
 const root = document.getElementById("escritorio");
 // O que pertence à biblioteca (some enquanto o escritório está aberto).
@@ -71,7 +72,8 @@ root.innerHTML = `
   </div>
   <div class="esc-historia" hidden></div>
   <div class="esc-editor" hidden></div>
-  <div class="esc-personagem" hidden></div>`;
+  <div class="esc-personagem" hidden></div>
+  <div class="esc-dragoes" aria-hidden="true" hidden></div>`;
 
 const deskEl = root.querySelector(".esc-mesa");
 const storyEl = root.querySelector(".esc-historia");
@@ -81,6 +83,12 @@ const postit = root.querySelector(".esc-postit");
 const shelfEl = root.querySelector(".esc-cadernos");
 const filtersEl = root.querySelector(".esc-filtros");
 const notebooks = new Map(); // id -> botão-caderno (reaproveitados, para o FLIP)
+
+// Os dragões que às vezes cruzam a mesa (o ritmo está em dragons.js).
+// Exportado só para testes (`dragons.flyNow()`, `dragons.state`).
+export const dragons = createDragons(root.querySelector(".esc-dragoes"), {
+  deskVisible: () => open && !deskEl.hidden,
+});
 
 const newButton = document.createElement("button");
 newButton.type = "button";
@@ -357,6 +365,7 @@ async function showDesk() {
   storyEl.hidden = true;
   deskEl.hidden = false;
   renderDesk();
+  dragons.deskShown();
   // O caderno aberto "fecha" de volta no lugar dele na mesa.
   const target = previous && notebooks.get(previous);
   if (!target || !from || reducedMotion()) return;
@@ -439,6 +448,7 @@ export async function enterOffice() {
     return routeOffice();
   }
   open = true;
+  dragons.startVisit();
   libraryScroll = window.scrollY;
   await loading; // (rápido) antes da troca: o endereço pode ser de uma história
   await slide(library, [root], 1, () => {
@@ -451,6 +461,7 @@ export async function enterOffice() {
 export async function leaveOffice() {
   if (!open) return;
   open = false;
+  dragons.endVisit();
   enteredByClick = false;
   storyOpenedByClick = false;
   closeEditor();

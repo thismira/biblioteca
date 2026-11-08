@@ -1135,3 +1135,17 @@ dialog.album-visor::backdrop { background: transparent; }
   .esc-aberto { min-height: 0; }
   .esc-aberto .esc-pag { flex: none; }
 }
+
+/* ---------- Os dragões que às vezes cruzam a mesa (dragons.js) ----------
+   Camada presa à tela, por cima da mesa, que não recebe cliques. */
+.esc-dragoes {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  overflow: hidden;
+  pointer-events: none;
+}
+.esc-dragoes[hidden] { display: none; }
+.esc-dragao { position: absolute; left: 0; top: 0; transform-origin: 56% 73%; will-change: transform; }
+.esc-dragao svg { display: block; width: 100%; height: auto; }
+@media (prefers-reduced-motion: reduce) { .esc-dragoes { display: none; } }
