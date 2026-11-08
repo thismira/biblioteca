@@ -225,3 +225,21 @@ export async function photoUrls(paths, seconds) {
   check(res);
   return Object.fromEntries(res.data.map((d, i) => [paths[i], d.signedUrl]).filter(([, url]) => url));
 }
+
+// Todos os capítulos com o texto (para o arquivo de backup).
+export async function loadAllChapters() {
+  const chapters = [];
+  for (let from = 0; ; from += 1000) {
+    const res = await supabase.from("chapters").select("data, updated_at").range(from, from + 999);
+    check(res);
+    chapters.push(...res.data.map((r) => ({ ...r.data, updatedAt: new Date(r.updated_at).toISOString() })));
+    if (res.data.length < 1000) return chapters;
+  }
+}
+
+// Os capítulos de uma história com o texto (para "Baixar história").
+export async function loadStoryChapters(storyId) {
+  const res = await supabase.from("chapters").select("data, updated_at").eq("story_id", storyId);
+  check(res);
+  return res.data.map((r) => ({ ...r.data, updatedAt: new Date(r.updated_at).toISOString() }));
+}

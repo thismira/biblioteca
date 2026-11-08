@@ -42,14 +42,14 @@ function build() {
         <div class="backup-opcao">
           <div>
             <h3>Guardar uma cópia</h3>
-            <p>Baixa um arquivo com tudo: livros, notas, resenhas, trechos, playlists, estantes e lista de desejos. Uma segurança extra, além da nuvem.</p>
+            <p>Baixa um arquivo com tudo: livros, notas, resenhas, trechos, playlists, estantes, lista de desejos e as histórias do escritório (com o texto de todos os capítulos; as fotos ficam na nuvem). Uma segurança extra, além da nuvem.</p>
           </div>
           <button class="botao" type="button" data-acao="exportar">⬇ Exportar backup</button>
         </div>
         <div class="backup-opcao">
           <div>
             <h3>Restaurar uma cópia</h3>
-            <p>Abre um arquivo de backup e substitui a biblioteca atual (pergunta antes).</p>
+            <p>Abre um arquivo de backup e substitui a biblioteca atual (pergunta antes). Histórias do escritório que não existem mais voltam; as que existem não são tocadas.</p>
           </div>
           <button class="botao secundario" type="button" data-acao="importar">⬆ Importar backup</button>
         </div>
@@ -148,7 +148,7 @@ async function downloadBackup(suffix = "") {
 
 // Antes de substituir: cópia automática do que existe hoje (se houver algo).
 async function safetyBackup() {
-  if (db.getBooks().length) await downloadBackup("-antes-de-substituir");
+  await downloadBackup("-antes-de-substituir");
 }
 
 // ---------- Importar backup ----------
@@ -164,12 +164,22 @@ async function importBackup(file) {
     return alertDialog({ title: "Arquivo inválido", message: "Esse arquivo não parece um backup desta biblioteca. Use um arquivo baixado em \"Exportar backup\"." });
   }
   const shelves = data.settings?.shelves?.length || 0;
+  // Histórias do escritório: só voltam as que não existem mais aqui.
+  let missing = [];
+  try {
+    missing = await db.storiesMissingFrom(data);
+  } catch (err) {
+    console.error(err);
+  }
+  const storiesNote = missing.length
+    ? ` ${plural(missing.length, "história do escritório que não existe mais aqui vai voltar", "histórias do escritório que não existem mais aqui vão voltar")} (sem as fotos); as que existem não são tocadas.`
+    : "";
   const ok = await confirmDialog({
     title: "Substituir sua biblioteca?",
     message:
       `O backup tem ${plural(data.books.length, "livro", "livros")}` +
       `${shelves ? ` e ${plural(shelves, "estante", "estantes")}` : ""}, salvo em ${formatDate(data.exportedAt)}. ` +
-      `Hoje você tem ${plural(db.getBooks().length, "livro", "livros")}, que serão trocados por ele. ` +
+      `Hoje você tem ${plural(db.getBooks().length, "livro", "livros")}, que serão trocados por ele.${storiesNote} ` +
       "Antes, vou baixar uma cópia da biblioteca atual, por segurança.",
     confirmText: "Substituir",
     danger: true,
@@ -178,13 +188,18 @@ async function importBackup(file) {
   try {
     await safetyBackup();
     await db.importAll(data);
+    if (missing.length) await db.restoreStories(missing, data.chapters || []);
   } catch (err) {
     console.error(err);
     return alertDialog({ title: "Não deu certo", message: err.message || "Não consegui importar o backup. Nada foi alterado." });
   }
   dialog.close();
   location.hash = "#/";
-  alertDialog({ title: "Backup restaurado", message: `Pronto! ${plural(data.books.length, "livro voltou", "livros voltaram")} para a biblioteca.` });
+  alertDialog({
+    title: "Backup restaurado",
+    message: `Pronto! ${plural(data.books.length, "livro voltou", "livros voltaram")} para a biblioteca` +
+      (missing.length ? ` e ${plural(missing.length, "história voltou", "histórias voltaram")} para o escritório.` : "."),
+  });
 }
 
 // ---------- Goodreads ----------

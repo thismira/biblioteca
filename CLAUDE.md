@@ -417,6 +417,21 @@ estiver pronto** — trabalhar sempre na branch `escritorio`.
   `db.addStoryQuote`; "Dar a um personagem" → `chooseDialog` com os
   personagens → `db.addCharacterQuote`). Cópia do trecho, com o capítulo;
   o texto não muda. O balão fica acima da seleção (abaixo se não couber).
+- Backup (versão 2): `db.exportAll()` leva também `stories` e `chapters`
+  (texto completo, `store.loadAllChapters`); sem as fotos. Importar backup:
+  livros/configurações como antes (substitui, com cópia de segurança, que
+  agora sai sempre) + `db.storiesMissingFrom` / `restoreStories`: só voltam
+  histórias que NÃO existem (pelo id), sem as referências às fotos; as
+  existentes não são tocadas.
+- "⬇ Baixar história (Word)" (página da história): `services/docx-write.js`
+  (`buildStoryDocx`) monta o .docx no navegador (zip com CRC32 +
+  `CompressionStream`): título (Title), sinopse (Subtitle), cada capítulo
+  em página nova (Heading 1), cenas (Heading 2), separador ✦, listas
+  (numeradas reiniciam), N/I/S/R, alinhamento; fonte/tamanho/espaçamento/
+  parágrafos de `story.layout`. A ordem das tags dentro de w:pPr/w:rPr
+  importa para o Word. Testado: lê de volta com `readDocx`, zip/XML válidos
+  e `textutil` do macOS abre (ele não entende listas numeradas — não serve
+  de referência para isso). `db.getFullChapters(storyId)`: uma consulta.
 - `album.js` (`createAlbum`): mural de fotos + visor (setas/teclado/
   arrastar, apagar com confirmação; opção `cover` = "★ Usar como capa").
   Usado pelo personagem (álbum + capa) e pelo Mundo (fotos do mundo).

@@ -221,8 +221,18 @@ export async function updateSettings(changes) {
   notify();
 }
 
+// Backup: livros, configurações e o escritório (histórias + texto de todos
+// os capítulos). As fotos ficam na nuvem e não entram no arquivo.
 export async function exportAll() {
-  return { app: "minha-biblioteca", version: 1, exportedAt: new Date().toISOString(), books, settings };
+  let office = {};
+  try {
+    await loadStories();
+    office = { stories, chapters: await store.loadAllChapters() };
+  } catch (err) {
+    // sem as histórias, o backup dos livros ainda sai
+    console.error("Backup sem as histórias:", err);
+  }
+  return { app: "minha-biblioteca", version: 2, exportedAt: new Date().toISOString(), books, settings, ...office };
 }
 
 // Vários livros de uma vez (importação), salvos numa gravação só.
@@ -780,6 +790,35 @@ export async function removeWorldCardImage(storyId, sectionId, cardId) {
   if (old) removePhotosQuietly([old.path]);
 }
 
+// ---------- Restaurar histórias de um backup ----------
+// Só traz as histórias que NÃO existem aqui (pelo id): as que existem não
+// são tocadas. As fotos não voltam (foram apagadas da nuvem junto com a
+// história), então as referências a elas saem.
+
+export async function storiesMissingFrom(data) {
+  await loadStories();
+  return (data.stories || []).filter((s) => s?.id && !getStory(s.id));
+}
+
+export async function restoreStories(list, allChapters = []) {
+  for (const raw of list) {
+    const base = storyDefaults(raw);
+    const story = {
+      ...base,
+      characters: base.characters.map((c) => ({ ...characterDefaults(c), cover: null, photos: [] })),
+      world: base.world.map((sec) => ({ ...sec, cards: sec.cards.map((c) => ({ ...c, image: null })) })),
+      worldPhotos: [],
+    };
+    const chapters = allChapters.filter((c) => c?.storyId === story.id);
+    await store.putStory(story);
+    if (chapters.length) await store.putChapters(chapters);
+    stories = [...stories, story];
+    chapterLists.set(story.id, chapters.map((c) => ({ id: c.id, title: c.title, words: c.words, updatedAt: c.updatedAt })));
+    chapterListsLoading.set(story.id, Promise.resolve());
+    notifyStories();
+  }
+}
+
 // ---------- Importação (Trazer do Google Docs) ----------
 // Os capítulos chegam prontos: { title, html, words }. As palavras
 // importadas não contam como "escritas hoje".
@@ -823,6 +862,16 @@ export async function appendChapters(storyId, list) {
     words: totalWords(storyId),
   });
   return chapters;
+}
+
+// Todos os capítulos de uma história, com o texto, na ordem do manuscrito
+// (para "Baixar história"). Uma consulta só.
+export async function getFullChapters(storyId) {
+  await loadChapters(storyId);
+  const list = await store.loadStoryChapters(storyId);
+  list.forEach((c) => fullChapters.set(c.id, c));
+  const byId = new Map(list.map((c) => [c.id, c]));
+  return getChapters(storyId).map((c) => byId.get(c.id)).filter(Boolean);
 }
 
 // Rascunho deste aparelho (texto ainda não confirmado pela nuvem).

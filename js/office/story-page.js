@@ -47,6 +47,7 @@ export function createStoryPage(root, { onBack, onDeleted, onOpenChapter, onOpen
           ${COVERS.map(([c]) => `<button type="button" role="radio" data-cor="${c}" style="--c:${c}" aria-label="Cor ${c}"></button>`).join("")}
         </div>
         <div class="numeros"></div>
+        <button class="link h-baixar" type="button" data-acao="baixar">⬇ Baixar história (Word)</button>
         <button class="link perigo h-apagar" type="button" data-acao="apagar-historia">Apagar história</button>
       </section>
       <section class="esc-pag dir" aria-live="polite"><div class="aba-conteudo"></div></section>
@@ -232,6 +233,7 @@ export function createStoryPage(root, { onBack, onDeleted, onOpenChapter, onOpen
     if (!el || !storyId) return;
     if (el.dataset.acao === "mesa") onBack();
     else if (el.dataset.acao === "apagar-historia") removeStory();
+    else if (el.dataset.acao === "baixar") downloadStory(el);
     else if (el.dataset.status && el.closest(".selos")) save({ status: el.dataset.status });
     else if (el.dataset.cor) save({ color: el.dataset.cor });
     else if (el.dataset.aba) {
@@ -252,6 +254,34 @@ export function createStoryPage(root, { onBack, onDeleted, onOpenChapter, onOpen
     root.querySelector(`[data-aba="${next}"]`).click();
     root.querySelector(`[data-aba="${next}"]`).focus();
   });
+
+  // "Baixar história": um arquivo Word com todos os capítulos.
+  async function downloadStory(button) {
+    const s = story();
+    button.disabled = true;
+    const label = button.textContent;
+    button.textContent = "Preparando o arquivo…";
+    try {
+      const { buildStoryDocx } = await import("../services/docx-write.js");
+      const chapters = await db.getFullChapters(s.id);
+      const blob = await buildStoryDocx({ ...s, layout: db.storyLayout(s) }, chapters);
+      const name = (s.title || "historia").replace(/[\\/:*?"<>|]+/g, "").trim().slice(0, 80) || "historia";
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${name}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      console.error(err);
+      toast("Não consegui preparar o arquivo. Confira a internet e tente de novo.");
+    } finally {
+      button.disabled = false;
+      button.textContent = label;
+    }
+  }
 
   async function removeStory() {
     const s = story();
