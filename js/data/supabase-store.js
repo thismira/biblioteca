@@ -177,3 +177,24 @@ export async function removeChapter(id) {
     check(await supabase.from("chapters").delete().eq("user_id", uid).eq("id", id));
   });
 }
+
+// Vários capítulos de uma vez (importação), em lotes de até ~800 KB.
+export async function putChapters(list) {
+  const uid = await userId();
+  const rows = list.map((c) => ({ user_id: uid, id: c.id, story_id: c.storyId, data: c, updated_at: c.updatedAt }));
+  let batch = [];
+  let size = 0;
+  const send = async () => {
+    if (!batch.length) return;
+    check(await supabase.from("chapters").upsert(batch, { onConflict: "user_id,id" }));
+    batch = [];
+    size = 0;
+  };
+  for (const r of rows) {
+    const s = (r.data.html || "").length + 500;
+    if (size + s > 800000) await send();
+    batch.push(r);
+    size += s;
+  }
+  await send();
+}

@@ -345,6 +345,30 @@ estiver pronto** — trabalhar sempre na branch `escritorio`.
   apaga desconta) e `lastEdit` ({ chapterId, title, at }), usado pelo
   post-it "Continuar escrevendo" da mesa (abre o capítulo com o cursor no
   fim; "voltar" leva ao Manuscrito e depois à mesa).
+- Trazer do Google Docs (botão da mesa → `story-import.js`): ela baixa
+  Arquivo → Fazer download → Microsoft Word (.docx). `services/docx.js` lê
+  o arquivo NO NAVEGADOR (zip lido à mão + `DecompressionStream
+  ("deflate-raw")`; `document.xml`, `styles.xml`, `numbering.xml`) e devolve
+  nós `heading` (nível: Título = 0, Título N = N, pelo NOME do estilo ou
+  `outlineLvl`) e `block` (HTML com negrito, itálico, sublinhado — menos o
+  de link —, riscado, alinhamento, listas, `<br>`; quebra de página e
+  texto apagado/código de campo ignorados; tabelas viram parágrafos).
+  Sem estilos de título: deduz (linha curta sem ponto final, em negrito,
+  com letra ≥ 1,2× a normal ou começando com Capítulo/Parte/Prólogo…;
+  letra maior = nível mais alto, "Destaque N"). O arquivo dela nunca é
+  enviado nem entra no repositório.
+- Prévia: "Como dividir" (níveis → história/capítulo, 1 capítulo por
+  história, uma história só, tudo junto); outros níveis viram `<h3>`;
+  texto antes do 1º capítulo vira o capítulo "Início"; texto antes do 1º
+  título vira uma história com o nome do arquivo (desmarcada se < 30
+  palavras). Títulos editáveis, caixinhas, "↑ juntar" (capítulo ao
+  anterior — o título vira `<h3>` — ou história à de cima), "✂ virar
+  história". Nome igual a uma história existente (sem acento/maiúscula):
+  "Não trazer" (padrão), "Juntar" (capítulos no fim) ou "cópia". Nada é
+  apagado. `db.importStories(list, onProgress)` (ordem do documento, na
+  frente da mesa, status "escrevendo", palavras não contam como "hoje")
+  e `db.appendChapters`; `store.putChapters` em lotes de ~800 KB.
+  Testado com .docx gerados no navegador (com e sem estilos).
 - Banco: `supabase/schema-escritorio.sql` (já rodado): `stories`,
   `chapters` (FK com cascade) e bucket privado `escritorio` (pasta por
   usuária). Não usar `settings` para nada do escritório.

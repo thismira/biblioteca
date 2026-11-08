@@ -12,6 +12,7 @@ import { promptDialog, toast } from "../ui/dialogs.js";
 import { paintNotebook, nextCover } from "./notebook.js";
 import { createStoryPage } from "./story-page.js";
 import { createEditor } from "./editor.js";
+import { importFromDocs } from "./story-import.js";
 
 const root = document.getElementById("escritorio");
 // O que pertence à biblioteca (some enquanto o escritório está aberto).
@@ -203,6 +204,21 @@ async function createStory() {
   }
 }
 
+// "Trazer do Google Docs": os cadernos trazidos caem na mesa, um por um.
+async function importStories() {
+  const touched = await importFromDocs();
+  if (!touched.length) return;
+  statusFilter = genreFilter = null;
+  renderDesk();
+  if (!reducedMotion()) {
+    touched.forEach((story, i) => notebooks.get(story.id)?.animate(
+      [{ transform: "translateY(-46px) scale(1.18)", opacity: 0 }, { transform: "none", opacity: 1 }],
+      { duration: 520, delay: i * 90, easing: "cubic-bezier(.3,1.35,.5,1)", fill: "backwards" }
+    ));
+  }
+  toast(touched.length === 1 ? "História trazida ✨" : `${touched.length} histórias trazidas ✨`);
+}
+
 // ---------- Abrir e fechar uma história ----------
 
 function openStory(id, notebook) {
@@ -389,7 +405,7 @@ deskEl.addEventListener("click", (event) => {
   const action = event.target.closest("[data-acao]")?.dataset.acao;
   if (action === "biblioteca") backToLibrary();
   else if (action === "nova") createStory();
-  else if (action === "importar") toast("Isso chega numa próxima etapa ✨");
+  else if (action === "importar") importStories();
   else if (action === "continuar") {
     const story = lastWritten();
     if (!story) return;

@@ -498,6 +498,51 @@ export async function renameChapter(storyId, id, title) {
   }
 }
 
+// ---------- Importação (Trazer do Google Docs) ----------
+// Os capítulos chegam prontos: { title, html, words }. As palavras
+// importadas não contam como "escritas hoje".
+
+function newChapters(storyId, list) {
+  const now = new Date().toISOString();
+  return list.map((c) => ({ id: newId(), storyId, title: c.title, html: c.html, words: c.words, createdAt: now, updatedAt: now }));
+}
+
+// Várias histórias novas, na ordem do documento, na frente da mesa.
+// `onProgress(feitas, total)`. Se der erro no meio, as já criadas ficam.
+export async function importStories(list, onProgress) {
+  const first = stories.length ? Math.min(...stories.map((s) => s.order)) - list.length : 0;
+  const created = [];
+  for (const [i, item] of list.entries()) {
+    const story = storyDefaults({ title: item.title, color: item.color, status: item.status || "escrevendo", order: first + i });
+    const chapters = newChapters(story.id, item.chapters);
+    story.chapterOrder = chapters.map((c) => c.id);
+    story.words = chapters.reduce((sum, c) => sum + c.words, 0);
+    await store.putStory(story); // a história antes (os capítulos apontam para ela)
+    await store.putChapters(chapters);
+    stories = [...stories, story];
+    chapterLists.set(story.id, chapters.map((c) => ({ id: c.id, title: c.title, words: c.words, updatedAt: c.updatedAt })));
+    chapterListsLoading.set(story.id, Promise.resolve());
+    created.push(story);
+    notifyStories();
+    onProgress?.(i + 1, list.length);
+  }
+  return created;
+}
+
+// Capítulos novos no fim de uma história que já existe ("juntar").
+export async function appendChapters(storyId, list) {
+  await loadChapters(storyId);
+  const chapters = newChapters(storyId, list);
+  await store.putChapters(chapters);
+  chapters.forEach((c) => setChapterMeta(storyId, c));
+  const story = getStory(storyId);
+  await updateStory(storyId, {
+    chapterOrder: [...story.chapterOrder, ...chapters.map((c) => c.id)],
+    words: totalWords(storyId),
+  });
+  return chapters;
+}
+
 // Rascunho deste aparelho (texto ainda não confirmado pela nuvem).
 export const getChapterDraft = (id) => local.loadDraft(id);
 export const saveChapterDraft = (id, draft) => local.saveDraft(id, draft);
