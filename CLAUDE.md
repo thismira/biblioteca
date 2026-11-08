@@ -374,20 +374,34 @@ estiver pronto** — trabalhar sempre na branch `escritorio`.
   Caveat, papel, até 3 traits); arrastar muda a ordem (`drag.js` com
   `row: "auto"` = grade). "+ Novo personagem" pede o nome e abre a página.
 - Página do personagem (`character-page.js`, `#/historia/<id>/personagem/<id>`,
-  tela `.esc-personagem` em office.js): fotos (polaroid grande +
-  miniaturas, ★ usar na polaroid, × apagar com confirmação), nome, papel
-  (datalist de sugestões), traits (category-picker, `db.getAllTraits`),
-  "Sobre" (salva 800 ms após parar); direita: quotes (`createQuotes` com
-  `chapters`), playlist (`createPlaylist`) e frases das músicas (cartões;
-  `lyrics`). Formato em `characterDefaults` (db.js): `{ id, name, role,
-  about, traits, photos: [{ path, w, h }], quotes: [{ id, text, chapterId }],
-  spotifyUrl, lyrics: [{ id, text, song, artist }] }`.
-- Fotos: `photos.js` (`pickPortrait`: recorte formato "retrato" + reduz a
-  900px JPEG). Storage privado `escritorio`, caminho guardado SEM o id da
-  pessoa (`<storyId>/<characterId>/<id>.jpg`; o store soma o `uid/`).
-  Mostrar = `db.getPhotoUrls()` (links temporários de 6 h, guardados na
-  memória). Sem o link, o servidor recusa (testado). Apagar personagem,
-  foto ou história também apaga os arquivos (`removePhotosQuietly`).
+  tela `.esc-personagem` em office.js): esquerda = **capa** (polaroid;
+  "Trocar capa" recorta em retrato, "Tirar capa"), nome, papel (datalist),
+  traits (category-picker, `db.getAllTraits`), "Sobre" (salva 800 ms após
+  parar); direita = **álbum** (mural em colunas, cada foto no formato dela;
+  "+ Adicionar fotos" escolhe várias de uma vez, sem recorte, 1400px;
+  clicar abre o visor: foto grande, setas/teclado/arrastar, "★ Usar como
+  capa", "Apagar" com confirmação), quotes (`createQuotes` com `chapters`),
+  playlist (`createPlaylist`) e frases das músicas (carrossel; `lyrics`).
+  Formato em `characterDefaults` (db.js): `{ id, name, role, about, traits,
+  cover: { path, w, h } | null, photos: [{ path, w, h }] (álbum),
+  quotes: [{ id, text, chapterId }], spotifyUrl, lyrics: [{ id, text, song,
+  artist }] }`. Personagens antigos (sem `cover`): a 1ª foto vira a capa.
+- Capa e álbum podem usar o MESMO arquivo ("usar como capa"): um arquivo
+  só sai do Storage quando não é usado em nenhum dos dois
+  (`setCharacterCover`, `useAlbumPhotoAsCover`, `removeCharacterCover`,
+  `addAlbumPhotos`, `removeAlbumPhoto`, `characterFiles`).
+- Fotos: `photos.js` (`pickPortrait` para a capa: recorte "retrato" + 900px;
+  `pickImages` + `prepareAlbumPhoto` para o álbum). Storage privado
+  `escritorio`, caminho guardado SEM o id da pessoa
+  (`<storyId>/<characterId>/<id>.jpg`; o store soma o `uid/`). Mostrar =
+  `db.getPhotoUrls()` (links temporários de 6 h, guardados na memória).
+  Sem o link, o servidor recusa (testado). Apagar personagem ou história
+  também apaga os arquivos (`removePhotosQuietly`).
+- `ui/carousel.js` (`createCarousel`): o motor do carrossel (setas,
+  bolinhas, arrastar, teclado, altura acompanha), usado pelos trechos dos
+  livros (`quotes.js`), quotes e frases das músicas. Na página estreita do
+  caderno (`@container`, ≤ 440px) as setas descem para a linha das
+  bolinhas.
 - `createQuotes` e `createPlaylist` agora têm ids únicos (vários na mesma
   tela) e opções: quotes `chapters`, `photo`, `emptyText`, `placeholder`;
   playlist `frameTitle`, `removeMessage`. Na página do livro nada muda.
