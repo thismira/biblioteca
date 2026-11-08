@@ -286,16 +286,18 @@ estiver pronto** — trabalhar sempre na branch `escritorio`.
   em que passam um pelo outro 2×, dourado na frente e depois o preto →
   saem juntos). Caminho por curvatura em forma de sino (sem trancos); o
   tempo de cada trecho usa a distância REAL entre as amostras (senão
-  "treme"). Ritmo (escolha do dono): ~4 s após a mesa aparecer ao entrar,
-  depois a cada 5–8 min (sorteado), no máximo 3 por visita; só na mesa,
-  aba visível, sem `dialog` aberto, 4 s sem ela mexer em nada, sem
-  "reduzir movimento"; voo interrompido não conta. Camada
-  `.esc-dragoes` fixa, sem cliques. Em `office.js`: `startVisit()` ao
-  entrar, `deskShown()` em `showDesk`, `endVisit()` ao sair;
-  `dragons.flyNow()`/`dragons.state` para testes (com o painel escondido o
-  navegador pausa o `requestAnimationFrame` — no teste, trocar por
-  `setTimeout`). Protótipo e geradores em `rascunhos/dragoes/` (fora do
-  git — não commitar: o site é público).
+  "treme"). **Easter egg** (escolha do dono, no lugar de aparecer
+  sozinho): só voam ao clicar nos clipes da mesa (`.esc-clipes`, um botão
+  que parece só os dois clipes; sobem um tiquinho no hover e sacodem no
+  clique — `callDragons()` em office.js). Um voo por vez; some se sair da
+  mesa/esconder a aba; "reduzir movimento" = nada. Os clipes somem em
+  telas ≤ 1000px (regra antiga da mesa), então o easter egg é só no
+  computador. Camada `.esc-dragoes` fixa, sem cliques. `dragons.stop()`
+  ao sair do escritório; `dragons.fly()`/`dragons.flying` (exportado em
+  office.js) para testes — com o painel escondido o navegador pausa o
+  `requestAnimationFrame`: no teste, trocar por `setTimeout`. Protótipo e
+  geradores em `rascunhos/dragoes/` (fora do git — não commitar: o site
+  é público).
 - Página da história (`story-page.js`, `#/historia/<id>[/<aba>]`): o
   caderno cresce até virar a página e volta ao fechar. Esquerda: título e
   sinopse (textareas que crescem; sinopse salva 800 ms após parar e no

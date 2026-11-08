@@ -66,8 +66,7 @@ root.innerHTML = `
     <div class="esc-obj esc-xicara" aria-hidden="true"><span class="pires"></span><span class="asa"></span><span class="boca"></span><span class="cafe"></span><span class="coracao"></span></div>
     <div class="esc-obj esc-caneta" aria-hidden="true"><span class="corpo"></span><span class="clip"></span><span class="anel"></span><span class="bico"></span></div>
     <div class="esc-obj esc-oculos" aria-hidden="true"><i></i><i></i><b></b></div>
-    <div class="esc-obj esc-clipe" style="left:210px;bottom:60px;--r:24deg" aria-hidden="true"></div>
-    <div class="esc-obj esc-clipe" style="left:240px;bottom:46px;--r:-12deg" aria-hidden="true"></div>
+    <button class="esc-clipes" type="button" data-acao="dragoes" aria-label="Clipes"><span class="esc-clipe" style="left:6px;bottom:20px;--r:24deg"></span><span class="esc-clipe" style="left:36px;bottom:6px;--r:-12deg"></span></button>
     <button class="esc-postit" type="button" data-acao="continuar" hidden><small>Continuar escrevendo</small><b></b><span></span></button>
   </div>
   <div class="esc-historia" hidden></div>
@@ -84,8 +83,8 @@ const shelfEl = root.querySelector(".esc-cadernos");
 const filtersEl = root.querySelector(".esc-filtros");
 const notebooks = new Map(); // id -> botão-caderno (reaproveitados, para o FLIP)
 
-// Os dragões que às vezes cruzam a mesa (o ritmo está em dragons.js).
-// Exportado só para testes (`dragons.flyNow()`, `dragons.state`).
+// Os dragões que cruzam a mesa: easter egg dos clipes (dragons.js).
+// Exportado só para testes (`dragons.fly()`, `dragons.flying`).
 export const dragons = createDragons(root.querySelector(".esc-dragoes"), {
   deskVisible: () => open && !deskEl.hidden,
 });
@@ -365,7 +364,6 @@ async function showDesk() {
   storyEl.hidden = true;
   deskEl.hidden = false;
   renderDesk();
-  dragons.deskShown();
   // O caderno aberto "fecha" de volta no lugar dele na mesa.
   const target = previous && notebooks.get(previous);
   if (!target || !from || reducedMotion()) return;
@@ -448,7 +446,6 @@ export async function enterOffice() {
     return routeOffice();
   }
   open = true;
-  dragons.startVisit();
   libraryScroll = window.scrollY;
   await loading; // (rápido) antes da troca: o endereço pode ser de uma história
   await slide(library, [root], 1, () => {
@@ -461,7 +458,7 @@ export async function enterOffice() {
 export async function leaveOffice() {
   if (!open) return;
   open = false;
-  dragons.endVisit();
+  dragons.stop();
   enteredByClick = false;
   storyOpenedByClick = false;
   closeEditor();
@@ -480,6 +477,7 @@ deskEl.addEventListener("click", (event) => {
   if (action === "biblioteca") backToLibrary();
   else if (action === "nova") createStory();
   else if (action === "importar") importStories();
+  else if (action === "dragoes") callDragons(event.target.closest(".esc-clipes"));
   else if (action === "continuar") {
     const story = lastWritten();
     if (!story) return;
@@ -489,6 +487,17 @@ deskEl.addEventListener("click", (event) => {
     openChapter(story.id, story.lastEdit.chapterId, { atEnd: true });
   }
 });
+
+// Easter egg: os clipes dão uma sacudidinha e os dragões cruzam a mesa.
+function callDragons(clips) {
+  if (reducedMotion() || dragons.flying) return;
+  clips.animate(
+    [{ transform: "none" }, { transform: "rotate(-9deg)" }, { transform: "rotate(7deg)" },
+     { transform: "rotate(-3deg)" }, { transform: "none" }],
+    { duration: 450, easing: "ease-in-out" }
+  );
+  dragons.fly();
+}
 
 // Mudou alguma história (ex.: salvou na página dela): a mesa acompanha.
 db.subscribeStories(() => open && !deskEl.hidden && renderDesk());

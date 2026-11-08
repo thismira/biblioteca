@@ -1,28 +1,17 @@
-// Os dois dragões (preto grande e dourado menor) que às vezes cruzam a mesa
-// do escritório, da esquerda para a direita: chegam em faixas paralelas, se
+// Os dois dragões (preto grande e dourado menor) que cruzam a mesa do
+// escritório, da esquerda para a direita: chegam em faixas paralelas, se
 // cruzam em "X" num pequeno mergulho, fazem um looping em que passam um pelo
 // outro duas vezes (o dourado na frente, depois o preto) e saem juntos.
 // Voo aprovado pelo dono no protótipo (rascunhos/dragoes/voo.html).
 //
-// RITMO (escolha do dono): uma vez ~4 s depois de a mesa aparecer ao entrar;
-// depois, de 5 a 8 minutos (sorteado); no máximo 3 por visita ao escritório.
-// Só na mesa (nunca no editor nem nas histórias), com a aba visível, sem
-// janela aberta, se ela não mexeu em nada nos últimos segundos e se o
-// aparelho não pede "reduzir movimento". Se não der na hora, espera e tenta
-// de novo.
+// É um EASTER EGG (escolha do dono): só voam quando ela clica nos clipes da
+// mesa (office.js). Nada de voo sozinho. Um voo por vez; some se ela sair
+// da mesa ou esconder a aba; com "reduzir movimento" não voa.
 //
-// Uso (office.js): createDragons(camada, { deskVisible }) →
-// startVisit() ao entrar, deskShown() quando a mesa aparece, endVisit() ao
-// sair. flyNow() faz um voo na hora (testes; um dia, um objeto clicável).
+// Uso (office.js): createDragons(camada, { deskVisible }) → fly() ao clicar
+// nos clipes, stop() ao sair do escritório.
 
 import { reducedMotion } from "../ui/fly-book.js";
-
-const ENTRY_DELAY = 4000;                       // 1º voo, depois que a mesa aparece
-const NEXT_MIN = 5 * 60_000, NEXT_MAX = 8 * 60_000;
-const MAX_PER_VISIT = 3;
-const DESK_SETTLE = 3000;   // a mesa acabou de aparecer: espera ela "assentar"
-const IDLE = 4000;          // ela mexeu em algo há menos que isso: espera
-const RETRY = 2500;         // não deu agora: tenta de novo daqui a pouco
 
 // ---------------------------------------------------------------------------
 // 1) O CAMINHO, num palco de 1600×900 (depois ajustado à tela).
@@ -135,56 +124,28 @@ const loadSvg = (url) => {
 };
 
 // ---------------------------------------------------------------------------
-// 3) O CONTROLE: o voo e o ritmo
+// 3) O CONTROLE: um voo quando ela pede
 // ---------------------------------------------------------------------------
 export function createDragons(layer, { deskVisible }) {
-  let visiting = false;
-  let flights = 0;
-  let timer = 0;
-  let dueAt = 0;          // quando o próximo voo pode acontecer
-  let deskShownAt = 0;
-  let lastTouch = 0;
-  let flying = null;      // { raf, els, ... } durante um voo
+  let flying = null; // { raf, els } durante um voo
 
-  const now = () => performance.now();
-
-  // Qualquer mexida dela adia o voo (só conta enquanto está no escritório).
-  const touched = () => (lastTouch = now());
-  for (const type of ["pointerdown", "keydown", "wheel", "touchstart"]) {
-    window.addEventListener(type, touched, { passive: true, capture: true });
-  }
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden) abort();
+    if (document.hidden) stop();
   });
 
-  const canFly = () =>
-    visiting && deskVisible() && !document.hidden && !reducedMotion() &&
-    !document.querySelector("dialog[open]") &&
-    now() - deskShownAt > DESK_SETTLE && now() - lastTouch > IDLE;
-
-  function schedule(delay) {
-    clearTimeout(timer);
-    dueAt = now() + delay;
-    timer = setTimeout(tick, delay);
+  // Devolve false se não deu para voar agora (já voando, ou movimento reduzido).
+  function fly() {
+    if (flying || reducedMotion() || !deskVisible()) return false;
+    const mine = (flying = { raf: 0, els: [] });
+    start(mine).catch((err) => {
+      console.warn("Os dragões não voaram:", err);
+      if (flying === mine) stop();
+    });
+    return true;
   }
 
-  function tick() {
-    if (!visiting || flying || flights >= MAX_PER_VISIT) return;
-    if (!canFly()) return schedule(RETRY);
-    fly().catch((err) => console.warn("Os dragões não voaram:", err));
-  }
-
-  async function fly() {
-    if (flying) return;
-    flying = { raf: 0 };
-    const mine = flying;
-    let svgs;
-    try {
-      svgs = await Promise.all(DRAGONS.map((d) => loadSvg(d.svg)));
-    } catch (err) {
-      flying = null;
-      throw err;
-    }
+  async function start(mine) {
+    const svgs = await Promise.all(DRAGONS.map((d) => loadSvg(d.svg)));
     if (flying !== mine) return; // cancelado enquanto carregava
     const am = getPaths();
     const ds = DRAGONS.map((d, i) => {
@@ -200,16 +161,16 @@ export function createDragons(layer, { deskVisible }) {
     });
     mine.els = ds.map((d) => d.el);
     layer.hidden = false;
-    const t0 = now();
+    const t0 = performance.now();
     let ultimo = t0;
 
     const quadro = (agora) => {
       if (flying !== mine) return;
-      if (!deskVisible() || !visiting) return abort();
+      if (!deskVisible()) return stop();
       const dt = Math.min(0.05, (agora - ultimo) / 1000);
       ultimo = agora;
       // O palco de 1600×900 vira a tela: centralizado, um pouco acima do
-      // meio; no celular os dragões encolhem até um limite (o looping cabe).
+      // meio; em telas estreitas os dragões encolhem até um limite.
       const W = layer.clientWidth, H = layer.clientHeight;
       const esc = Math.min(1.1, Math.max(0.4, W / 1600));
       const cx = W / 2, cy = H * 0.42;
@@ -247,53 +208,23 @@ export function createDragons(layer, { deskVisible }) {
           `rotate(${s.ang + incl}rad) scale(${(1 + 0.07 * p).toFixed(3)})`;
       }
       if (ativo) mine.raf = requestAnimationFrame(quadro);
-      else finish(true);
+      else stop();
     };
     mine.raf = requestAnimationFrame(quadro);
   }
 
-  // Terminou (ou foi interrompido): limpa a camada e marca o próximo.
-  function finish(completed) {
+  // Fim do voo (ou interrompido): limpa a camada.
+  function stop() {
     if (!flying) return;
     cancelAnimationFrame(flying.raf);
-    flying.els?.forEach((el) => el.remove());
+    flying.els.forEach((el) => el.remove());
     flying = null;
     layer.hidden = true;
-    if (!visiting) return;
-    if (completed) {
-      flights++;
-      if (flights < MAX_PER_VISIT) schedule(NEXT_MIN + Math.random() * (NEXT_MAX - NEXT_MIN));
-    } else {
-      schedule(RETRY); // interrompido no meio: não conta, tenta de novo depois
-    }
   }
-  const abort = () => finish(false);
 
   return {
-    // Entrou no escritório (vindo da biblioteca): uma visita nova.
-    startVisit() {
-      visiting = true;
-      flights = 0;
-      dueAt = 0;
-      clearTimeout(timer);
-    },
-    // A mesa apareceu: na 1ª vez da visita, marca o voo de entrada.
-    deskShown() {
-      deskShownAt = now();
-      if (!visiting || flights >= MAX_PER_VISIT || flying) return;
-      if (!dueAt) schedule(ENTRY_DELAY);
-    },
-    // Saiu do escritório: some tudo e para de contar.
-    endVisit() {
-      visiting = false;
-      clearTimeout(timer);
-      dueAt = 0;
-      abort();
-    },
-    // Um voo agora mesmo (sem as regras do ritmo).
-    flyNow: () => fly(),
-    get state() {
-      return { visiting, flights, flying: !!flying, nextIn: dueAt ? Math.max(0, Math.round(dueAt - now())) : null };
-    },
+    fly,
+    stop,
+    get flying() { return !!flying; },
   };
 }

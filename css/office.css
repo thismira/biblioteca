@@ -288,7 +288,7 @@ body.no-escritorio { background: #E9D5BC; }
 .esc-oculos i:nth-child(2) { right: 10px; }
 .esc-oculos b { position: absolute; left: 78px; top: 24px; width: 14px; height: 10px; border-top: 4px solid #C9A14A; border-radius: 50% 50% 0 0; }
 
-.esc-clipe { width: 18px; height: 50px; border: 2.5px solid #B9B4BC; border-radius: 9px; transform: rotate(var(--r)); }
+.esc-clipe { position: absolute; width: 18px; height: 50px; border: 2.5px solid #B9B4BC; border-radius: 9px; transform: rotate(var(--r)); }
 .esc-clipe::after { content: ""; position: absolute; left: 3px; top: 8px; width: 7px; height: 30px; border: 2.5px solid #B9B4BC; border-bottom: 0; border-radius: 6px 6px 0 0; }
 
 /* Post-it "Continuar escrevendo" (aparece quando houver capítulos) */
@@ -316,7 +316,7 @@ body.no-escritorio { background: #E9D5BC; }
 
 /* Telas estreitas: objetos saem, o resto se reorganiza */
 @media (max-width: 1000px) {
-  .esc-oculos, .esc-caneta, .esc-clipe { display: none; }
+  .esc-oculos, .esc-caneta, .esc-clipes { display: none; }
   .esc-postit { position: relative; left: auto; top: auto; display: block; margin: 26px auto 0; }
 }
 @media (max-width: 600px) {
@@ -1136,7 +1136,29 @@ dialog.album-visor::backdrop { background: transparent; }
   .esc-aberto .esc-pag { flex: none; }
 }
 
-/* ---------- Os dragões que às vezes cruzam a mesa (dragons.js) ----------
+/* ---------- Easter egg: clicar nos clipes chama os dragões ----------
+   Parece só um par de clipes; ao passar o mouse eles se mexem um tiquinho. */
+.esc-clipes {
+  position: absolute;
+  left: 204px;
+  bottom: 40px;
+  z-index: 1;
+  width: 64px;
+  height: 84px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.esc-clipes .esc-clipe { transition: translate .25s cubic-bezier(.2,.8,.2,1); }
+.esc-clipes:hover .esc-clipe { translate: 0 -3px; }
+.esc-clipes:hover .esc-clipe + .esc-clipe { translate: 1px -2px; transition-delay: .05s; }
+.esc-clipes:focus-visible { outline: 2px dashed #9E4A65; outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .esc-clipes .esc-clipe { transition: none; } }
+
+/* ---------- Os dragões que cruzam a mesa (dragons.js) ----------
    Camada presa à tela, por cima da mesa, que não recebe cliques. */
 .esc-dragoes {
   position: fixed;
