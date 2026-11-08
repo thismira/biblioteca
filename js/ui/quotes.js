@@ -6,18 +6,17 @@
 // da página. `photo: false` tira o botão de fotografar. Ids únicos: pode
 // haver mais de um na mesma tela.
 //
-// Os trechos aparecem num carrossel: um por vez, com setas, bolinhas,
-// arrastar com o dedo (pointer events) e setas do teclado.
+// Os trechos aparecem num carrossel (carousel.js): um por vez, com setas,
+// bolinhas, arrastar com o dedo (pointer events) e setas do teclado.
 
 import { confirmDialog } from "./dialogs.js";
+import { createCarousel } from "./carousel.js";
 import { pickAndCrop } from "./photo-crop.js";
 import { recognizeText } from "../services/ocr.js";
 
 // Confiança da leitura (0–100): abaixo de MIN não preenche; abaixo de GOOD avisa.
 const MIN_CONFIDENCE = 45;
 const GOOD_CONFIDENCE = 75;
-const SWIPE_DISTANCE = 50; // quanto arrastar (px) para passar de trecho
-const MAX_DOTS = 12;       // com mais trechos que isso, só mostra "3 de 20"
 
 const newId = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
 
@@ -55,17 +54,6 @@ export function createQuotes(container, {
     ? `<label for="${id}">Capítulo</label><select id="${id}" class="quote-capitulo"></select>`
     : `<label for="${id}">Página</label><input id="${id}" type="number" min="1" inputmode="numeric">`;
   container.innerHTML = `
-    <div class="quotes-carrossel">
-      <button class="carrossel-seta" type="button" data-ir="-1" aria-label="Trecho anterior">‹</button>
-      <div class="carrossel-janela" tabindex="0" aria-roledescription="carrossel" aria-label="Trechos favoritos">
-        <ul class="quotes-lista"></ul>
-      </div>
-      <button class="carrossel-seta" type="button" data-ir="1" aria-label="Próximo trecho">›</button>
-      <div class="carrossel-rodape">
-        <span class="carrossel-pontos"></span>
-        <span class="carrossel-contagem" aria-live="polite"></span>
-      </div>
-    </div>
     <p class="quotes-vazio"></p>
     <form class="quote-novo">
       <label for="quote-texto-${uid}">Novo trecho</label>
@@ -78,11 +66,15 @@ export function createQuotes(container, {
       <p class="quote-leitura" aria-live="polite"></p>
     </form>`;
 
-  const carousel = container.querySelector(".quotes-carrossel");
-  const windowEl = container.querySelector(".carrossel-janela");
-  const list = container.querySelector(".quotes-lista");
-  const dotsEl = container.querySelector(".carrossel-pontos");
-  const countEl = container.querySelector(".carrossel-contagem");
+  let editingId = null; // trecho em edição (só um por vez)
+  const carousel = createCarousel({
+    label: "Trechos favoritos",
+    prev: "Trecho anterior",
+    next: "Próximo trecho",
+    item: "Trecho",
+    busy: () => Boolean(editingId),
+  });
+  container.prepend(carousel.el);
   const form = container.querySelector(".quote-novo");
   const textInput = form.querySelector("textarea");
   const pageInput = form.querySelector("input, select");
@@ -96,9 +88,6 @@ export function createQuotes(container, {
     select.value = chapters().some((c) => c.id === selected) ? selected : "";
   }
   const readingStatus = form.querySelector(".quote-leitura");
-  let editingId = null; // trecho em edição (só um por vez)
-  let index = 0;        // trecho que está aparecendo no carrossel
-  let slides = [];
 
   // Página digitada -> número dentro do livro, ou null se vazia.
   function readPage(value) {
@@ -111,118 +100,17 @@ export function createQuotes(container, {
   function render({ showId = null } = {}) {
     const quotes = sorted(getBook()?.quotes || [], position);
     container.querySelector(".quotes-vazio").hidden = quotes.length > 0;
-    carousel.hidden = quotes.length === 0;
+    carousel.el.hidden = quotes.length === 0;
     if (byChapter) fillChapters(pageInput, pageInput.value);
     else pageInput.max = getBook()?.pages || "";
-    const currentId = showId || slides[index]?.dataset.id;
-    slides = quotes.map((q) => {
+    carousel.set(quotes.map((q) => {
       const li = document.createElement("li");
       li.className = "quote-slide";
       li.dataset.id = q.id;
       li.appendChild(q.id === editingId ? editCard(q) : card(q));
-      resizeWatcher.observe(li);
       return li;
-    });
-    list.replaceChildren(...slides);
-    const found = quotes.findIndex((q) => q.id === currentId);
-    index = found >= 0 ? found : Math.min(index, Math.max(0, quotes.length - 1));
-    carousel.classList.toggle("um-so", quotes.length < 2);
-    renderDots();
-    move({ animate: false });
+    }), { showId });
   }
-
-  function renderDots() {
-    const n = slides.length;
-    dotsEl.replaceChildren(
-      ...(n <= MAX_DOTS && n > 1
-        ? slides.map((_, i) => {
-            const dot = document.createElement("button");
-            dot.type = "button";
-            dot.className = "ponto";
-            dot.dataset.para = i;
-            dot.setAttribute("aria-label", `Trecho ${i + 1}`);
-            return dot;
-          })
-        : [])
-    );
-  }
-
-  // Mostra o trecho `index`, deslizando (ou não) até ele.
-  function move({ animate = true, offset = 0 } = {}) {
-    list.style.transition = animate ? "" : "none";
-    list.style.transform = `translateX(calc(${-index * 100}% + ${offset}px))`;
-    if (!animate) void list.offsetWidth; // aplica sem animar
-    list.style.transition = "";
-    slides.forEach((li, i) => {
-      const active = i === index;
-      li.inert = !active; // trechos escondidos não recebem foco
-      li.setAttribute("aria-hidden", String(!active));
-    });
-    dotsEl.querySelectorAll(".ponto").forEach((d, i) => d.setAttribute("aria-current", String(i === index)));
-    countEl.textContent = slides.length > 1 ? `${index + 1} de ${slides.length}` : "";
-    fitHeight();
-  }
-
-  function goTo(i) {
-    if (!slides.length) return;
-    index = (i + slides.length) % slides.length; // do último volta ao primeiro
-    move();
-  }
-
-  // A caixa acompanha a altura do trecho que está aparecendo.
-  function fitHeight() {
-    const active = slides[index];
-    if (active && active.offsetHeight) windowEl.style.height = active.offsetHeight + "px";
-  }
-  // Recalcula quando a altura muda (página aparecendo, edição, fonte carregando).
-  const resizeWatcher = new ResizeObserver(fitHeight);
-
-  carousel.addEventListener("click", (event) => {
-    const step = event.target.closest("[data-ir]")?.dataset.ir;
-    const dot = event.target.closest("[data-para]")?.dataset.para;
-    if (step) goTo(index + Number(step));
-    if (dot !== undefined) goTo(Number(dot));
-  });
-
-  windowEl.addEventListener("keydown", (event) => {
-    if (editingId) return;
-    if (event.key === "ArrowLeft") goTo(index - 1);
-    if (event.key === "ArrowRight") goTo(index + 1);
-  });
-
-  // Arrastar para os lados (dedo ou mouse). Só vira arraste se o movimento
-  // for mais para o lado do que para cima/baixo, para não atrapalhar a rolagem.
-  let drag = null;
-  windowEl.addEventListener("pointerdown", (event) => {
-    if (editingId || slides.length < 2 || event.target.closest("button, textarea, input")) return;
-    drag = { x: event.clientX, y: event.clientY, dragging: false, id: event.pointerId };
-  });
-  windowEl.addEventListener("pointermove", (event) => {
-    if (!drag) return;
-    const dx = event.clientX - drag.x;
-    const dy = event.clientY - drag.y;
-    if (!drag.dragging) {
-      if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 8) return (drag = null); // é rolagem
-      if (Math.abs(dx) < 8) return;
-      drag.dragging = true;
-      // Continua recebendo o movimento mesmo se o dedo sair da caixa.
-      // (Pode falhar se o toque já foi cancelado; o arraste segue assim mesmo.)
-      try { windowEl.setPointerCapture(drag.id); } catch {}
-    }
-    move({ animate: false, offset: dx }); // o trecho acompanha o dedo
-  });
-  const endDrag = (event) => {
-    if (!drag) return;
-    const dx = event.clientX - drag.x;
-    const wasDragging = drag.dragging;
-    drag = null;
-    if (!wasDragging) return;
-    if (dx <= -SWIPE_DISTANCE) goTo(index + 1);
-    else if (dx >= SWIPE_DISTANCE) goTo(index - 1);
-    else move(); // pouco: volta para o lugar
-  };
-  windowEl.addEventListener("pointerup", endDrag);
-  windowEl.addEventListener("pointercancel", endDrag);
 
   function card(q) {
     const li = document.createElement("div");
@@ -274,8 +162,9 @@ export function createQuotes(container, {
     readingStatus.textContent = "";
     // Vai até o trecho novo, deslizando, e dá um brilho nele.
     render();
+    const slides = carousel.slides();
     const position = slides.findIndex((li) => li.dataset.id === quote.id);
-    goTo(position);
+    carousel.goTo(position);
     slides[position]?.querySelector(".quote").classList.add("novo");
   });
 
@@ -316,7 +205,7 @@ export function createQuotes(container, {
     }
   });
 
-  list.addEventListener("click", async (event) => {
+  carousel.el.addEventListener("click", async (event) => {
     const action = event.target.closest("[data-acao]")?.dataset.acao;
     const li = event.target.closest(".quote-slide");
     if (!action || !li) return;
@@ -326,7 +215,7 @@ export function createQuotes(container, {
     if (action === "editar") {
       editingId = quote.id;
       render();
-      list.querySelector(".editando textarea").focus();
+      carousel.el.querySelector(".editando textarea").focus();
     } else if (action === "cancelar") {
       editingId = null;
       render();
@@ -356,8 +245,7 @@ export function createQuotes(container, {
   return {
     render() {
       editingId = null;
-      index = 0;
-      slides = [];
+      carousel.reset();
       textInput.value = "";
       pageInput.value = "";
       readingStatus.textContent = "";

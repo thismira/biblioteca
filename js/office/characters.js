@@ -43,7 +43,7 @@ export function createCharacterBoard({ onOpen }) {
     const traits = card.querySelector(".polaroid-traits");
     traits.replaceChildren(...c.traits.slice(0, 3).map((t) => Object.assign(document.createElement("span"), { textContent: t })));
     const photo = card.querySelector(".polaroid-foto");
-    const path = c.photos[0]?.path;
+    const path = c.cover?.path;
     if (!path) {
       photo.replaceChildren(Object.assign(document.createElement("span"), { className: "polaroid-inicial", textContent: (c.name || "?").trim().charAt(0).toUpperCase() }));
       return;
@@ -79,7 +79,7 @@ export function createCharacterBoard({ onOpen }) {
     const story = db.getStory(storyId);
     if (!story) return;
     // pede os links de todas as fotos de uma vez
-    db.getPhotoUrls(story.characters.map((c) => c.photos[0]?.path).filter(Boolean)).catch(() => {});
+    db.getPhotoUrls(story.characters.map((c) => c.cover?.path).filter(Boolean)).catch(() => {});
     const seen = new Set();
     const items = story.characters.map((c) => {
       seen.add(c.id);

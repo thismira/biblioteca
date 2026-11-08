@@ -341,7 +341,7 @@ export async function updateStory(id, changes) {
 
 // Atenção: apaga a história E os capítulos dela. Só depois de confirmar.
 export async function deleteStory(id) {
-  const photos = (getStory(id)?.characters || []).flatMap((c) => c.photos.map((p) => p.path));
+  const photos = (getStory(id)?.characters || []).flatMap(characterFiles);
   await store.removeStory(id);
   removePhotosQuietly(photos);
   stories = stories.filter((s) => s.id !== id);
@@ -505,23 +505,29 @@ export async function renameChapter(storyId, id, title) {
 
 // ---------- Escritório: personagens ----------
 // Ficam dentro da história (`story.characters`, na ordem do quadro).
-// Fotos no Storage: `photos: [{ path, w, h }]`, a primeira é a da polaroid.
+// Fotos no Storage: `cover` = a capa (foto da polaroid, recortada em
+// retrato) e `photos` = o álbum ({ path, w, h }). A capa pode ser uma foto
+// do álbum (mesmo arquivo): um arquivo só é apagado quando não é usado
+// em nenhum dos dois.
 
 function characterDefaults(fields) {
   const now = new Date().toISOString();
+  // Personagens de antes do álbum: a primeira foto era a capa.
+  const cover = "cover" in fields ? fields.cover : fields.photos?.[0] || null;
   return {
     id: newId(),
     name: "",
     role: "",
     about: "",
     traits: [],
-    photos: [],
+    photos: [],     // álbum
     quotes: [],     // { id, text, chapterId, createdAt }
     spotifyUrl: "",
     lyrics: [],     // { id, text, song, artist, createdAt }
     createdAt: now,
     updatedAt: now,
     ...fields,
+    cover,
   };
 }
 
@@ -551,11 +557,14 @@ export function moveCharacters(storyId, ids) {
   return updateStory(storyId, { characters });
 }
 
+// Todos os arquivos de foto de um personagem (capa + álbum, sem repetir).
+const characterFiles = (c) => [...new Set([c.cover?.path, ...c.photos.map((p) => p.path)].filter(Boolean))];
+
 // Atenção: apaga o personagem e as fotos dele. Só depois de confirmar.
 export async function deleteCharacter(storyId, id) {
   const character = getCharacter(storyId, id);
   await updateStory(storyId, { characters: getStory(storyId).characters.filter((c) => c.id !== id) });
-  removePhotosQuietly(character?.photos.map((p) => p.path) || []);
+  removePhotosQuietly(character ? characterFiles(character) : []);
 }
 
 // Fotos que ninguém usa mais: tenta apagar; se falhar, só ocupa espaço.
@@ -565,24 +574,68 @@ function removePhotosQuietly(paths) {
   paths.forEach((p) => photoLinks.delete(p));
 }
 
-export async function addCharacterPhoto(storyId, id, { blob, w, h }) {
-  const path = `${storyId}/${id}/${newId()}.jpg`;
+const photoPath = (storyId, id) => `${storyId}/${id}/${newId()}.jpg`;
+
+// Capa nova (foto enviada agora). A antiga sai do Storage se não estiver no álbum.
+export async function setCharacterCover(storyId, id, { blob, w, h }) {
+  const path = photoPath(storyId, id);
   await store.uploadPhoto(path, blob);
+  const old = getCharacter(storyId, id).cover;
   try {
-    const character = getCharacter(storyId, id);
-    await updateCharacter(storyId, id, { photos: [...character.photos, { path, w, h }] });
+    await updateCharacter(storyId, id, { cover: { path, w, h } });
   } catch (err) {
     removePhotosQuietly([path]);
     throw err;
   }
-  return path;
+  if (old && !getCharacter(storyId, id).photos.some((p) => p.path === old.path)) removePhotosQuietly([old.path]);
 }
 
-// Atenção: apaga a foto. Só depois de confirmar.
-export async function removeCharacterPhoto(storyId, id, path) {
-  const character = getCharacter(storyId, id);
-  await updateCharacter(storyId, id, { photos: character.photos.filter((p) => p.path !== path) });
-  removePhotosQuietly([path]);
+// Uma foto do álbum vira a capa (mesmo arquivo).
+export async function useAlbumPhotoAsCover(storyId, id, path) {
+  const c = getCharacter(storyId, id);
+  const photo = c.photos.find((p) => p.path === path);
+  if (!photo || c.cover?.path === path) return;
+  const old = c.cover;
+  await updateCharacter(storyId, id, { cover: photo });
+  if (old && !c.photos.some((p) => p.path === old.path)) removePhotosQuietly([old.path]);
+}
+
+// Tira a capa (o arquivo só é apagado se não estiver no álbum).
+export async function removeCharacterCover(storyId, id) {
+  const c = getCharacter(storyId, id);
+  if (!c.cover) return;
+  await updateCharacter(storyId, id, { cover: null });
+  if (!c.photos.some((p) => p.path === c.cover.path)) removePhotosQuietly([c.cover.path]);
+}
+
+// Várias fotos novas no álbum. `onProgress(enviadas, total)`.
+export async function addAlbumPhotos(storyId, id, list, onProgress) {
+  const added = [];
+  try {
+    for (const [i, { blob, w, h }] of list.entries()) {
+      const path = photoPath(storyId, id);
+      await store.uploadPhoto(path, blob);
+      added.push({ path, w, h });
+      onProgress?.(i + 1, list.length);
+    }
+  } finally {
+    // as que subiram entram no álbum, mesmo se uma falhar no meio
+    if (added.length) {
+      const c = getCharacter(storyId, id);
+      await updateCharacter(storyId, id, { photos: [...c.photos, ...added] }).catch((err) => {
+        removePhotosQuietly(added.map((p) => p.path));
+        throw err;
+      });
+    }
+  }
+  return added;
+}
+
+// Atenção: tira a foto do álbum (o arquivo é apagado se não for a capa).
+export async function removeAlbumPhoto(storyId, id, path) {
+  const c = getCharacter(storyId, id);
+  await updateCharacter(storyId, id, { photos: c.photos.filter((p) => p.path !== path) });
+  if (c.cover?.path !== path) removePhotosQuietly([path]);
 }
 
 // Traits já usados em qualquer história (para sugerir nos chips).

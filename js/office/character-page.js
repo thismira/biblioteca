@@ -1,14 +1,16 @@
 // Página de um personagem (#/historia/<id>/personagem/<id>): um caderno
-// aberto. Esquerda: fotos, nome, papel, traits e "Sobre". Direita: quotes
-// do personagem (carrossel, com o capítulo), playlist e frases das músicas.
+// aberto. Esquerda: capa (a foto da polaroid), nome, papel, traits e
+// "Sobre". Direita: álbum (várias fotos; clicar abre o visor), quotes
+// (carrossel, com o capítulo), playlist e frases das músicas (carrossel).
 // Tudo salva na hora (db.updateCharacter).
 
 import * as db from "../data/db.js";
 import { createCategoryPicker } from "../ui/category-picker.js";
 import { createQuotes } from "../ui/quotes.js";
 import { createPlaylist } from "../ui/playlist.js";
+import { createCarousel } from "../ui/carousel.js";
 import { confirmDialog, toast } from "../ui/dialogs.js";
-import { pickPortrait } from "./photos.js";
+import { pickPortrait, pickImages, prepareAlbumPhoto } from "./photos.js";
 
 const ROLES = ["Protagonista", "Interesse amoroso", "Antagonista", "Coadjuvante", "Mentor(a)", "Família", "Amigo(a)", "Narrador(a)"];
 const STARTER_TRAITS = ["Teimosa", "Leal", "Sonhadora", "Sarcástico", "Tímida", "Corajoso", "Misteriosa", "Gentil", "Orgulhoso", "Impulsiva"];
@@ -24,8 +26,10 @@ export function createCharacterPage(root, { onBack, onDeleted }) {
       <section class="esc-pag esq" aria-label="Sobre o personagem">
         <div class="ficha-fotos">
           <div class="ficha-polaroid"><span class="polaroid-alfinete" aria-hidden="true"></span><div class="ficha-foto"></div></div>
-          <div class="ficha-miniaturas"></div>
-          <button class="link" type="button" data-acao="foto">+ Adicionar foto</button>
+          <div class="ficha-capa-acoes">
+            <button class="link" type="button" data-acao="capa-trocar"></button>
+            <button class="link" type="button" data-acao="capa-tirar">Tirar capa</button>
+          </div>
           <p class="ficha-enviando" aria-live="polite"></p>
         </div>
         <textarea class="h-titulo ficha-nome" rows="1" maxlength="80" aria-label="Nome do personagem" placeholder="Nome"></textarea>
@@ -39,12 +43,17 @@ export function createCharacterPage(root, { onBack, onDeleted }) {
         <button class="link perigo h-apagar" type="button" data-acao="apagar-personagem">Apagar personagem</button>
       </section>
       <section class="esc-pag dir ficha-dir">
+        <h2 class="aba-titulo">Álbum</h2>
+        <p class="album-vazio">Fotos que lembram esse personagem: rostos, roupas, lugares, cores… ✨</p>
+        <div class="album"></div>
+        <button class="link album-mais" type="button" data-acao="album-add">+ Adicionar fotos</button>
+        <p class="ficha-enviando album-enviando" aria-live="polite"></p>
         <h2 class="aba-titulo">Quotes</h2>
         <div class="ficha-quotes"></div>
         <h2 class="aba-titulo">Playlist</h2>
         <div class="ficha-playlist"></div>
         <h2 class="aba-titulo">Frases das músicas</h2>
-        <ul class="letras"></ul>
+        <div class="letras"><p class="quotes-vazio letras-vazio">Nenhuma frase ainda. Aquele verso que é a cara dele(a) mora aqui. 🎵</p></div>
         <form class="letra-nova">
           <textarea required rows="2" aria-label="Frase da música" placeholder="Aquele verso que é a cara dele(a)…"></textarea>
           <div class="letra-linha">
@@ -93,49 +102,36 @@ export function createCharacterPage(root, { onBack, onDeleted }) {
     field.style.height = field.scrollHeight + "px";
   }
 
-  // ---------- Fotos ----------
+  // ---------- Capa ----------
 
-  async function renderPhotos() {
+  const initial = () => (character()?.name || "?").trim().charAt(0).toUpperCase();
+  const inAlbum = (path) => character().photos.some((p) => p.path === path);
+
+  async function renderCover() {
     const c = character();
     const main = $(".ficha-foto");
-    const thumbs = $(".ficha-miniaturas");
-    const paths = c.photos.map((p) => p.path);
     const id = characterId;
-    let urls = {};
+    $('[data-acao="capa-trocar"]').textContent = c.cover ? "Trocar capa" : "+ Foto de capa";
+    $('[data-acao="capa-tirar"]').hidden = !c.cover;
+    if (!c.cover) {
+      main.innerHTML = `<span class="polaroid-inicial"></span>`;
+      main.firstChild.textContent = initial();
+      return;
+    }
+    if (main.querySelector("img")?.dataset.path === c.cover.path) return;
+    const img = document.createElement("img");
+    img.alt = `Foto de ${c.name || "personagem"}`;
+    img.dataset.path = c.cover.path;
+    main.replaceChildren(img);
     try {
-      urls = await db.getPhotoUrls(paths);
+      const urls = await db.getPhotoUrls([c.cover.path]);
+      if (id === characterId && urls[c.cover.path]) img.src = urls[c.cover.path];
     } catch (err) {
       console.error(err);
     }
-    if (id !== characterId) return; // trocou de personagem enquanto carregava
-    if (!paths.length) {
-      main.innerHTML = `<span class="polaroid-inicial"></span>`;
-      main.firstChild.textContent = (c.name || "?").trim().charAt(0).toUpperCase();
-    } else if (main.querySelector("img")?.dataset.path !== paths[0]) {
-      const img = document.createElement("img");
-      img.alt = `Foto de ${c.name || "personagem"}`;
-      img.dataset.path = paths[0];
-      if (urls[paths[0]]) img.src = urls[paths[0]];
-      main.replaceChildren(img);
-    }
-    thumbs.replaceChildren(...paths.map((path, i) => {
-      const fig = document.createElement("div");
-      fig.className = "ficha-mini";
-      fig.dataset.path = path;
-      fig.innerHTML = `
-        <img alt="">
-        <span class="ficha-mini-acoes">
-          ${i > 0 ? `<button type="button" data-acao="capa" title="Usar na polaroid" aria-label="Usar esta foto na polaroid">★</button>` : ""}
-          <button type="button" data-acao="apagar-foto" title="Apagar foto" aria-label="Apagar esta foto">×</button>
-        </span>`;
-      if (urls[path]) fig.querySelector("img").src = urls[path];
-      fig.classList.toggle("capa", i === 0);
-      return fig;
-    }));
-    thumbs.hidden = paths.length < 2;
   }
 
-  async function addPhoto() {
+  async function changeCover() {
     let photo;
     try {
       photo = await pickPortrait();
@@ -147,7 +143,7 @@ export function createCharacterPage(root, { onBack, onDeleted }) {
     const sending = $(".ficha-enviando");
     sending.textContent = "Enviando a foto…";
     try {
-      await db.addCharacterPhoto(storyId, characterId, photo);
+      await db.setCharacterCover(storyId, characterId, photo);
       sending.textContent = "";
     } catch (err) {
       console.error(err);
@@ -155,60 +151,219 @@ export function createCharacterPage(root, { onBack, onDeleted }) {
     }
   }
 
-  async function removePhoto(path) {
-    const ok = await confirmDialog({
-      title: "Apagar esta foto?",
-      message: "A foto será apagada da nuvem. Isso não pode ser desfeito.",
-      confirmText: "Sim, apagar",
-      danger: true,
-    });
-    if (!ok) return;
-    db.removeCharacterPhoto(storyId, characterId, path).catch((err) => toast(err.message));
+  async function removeCover() {
+    // Se a capa também está no álbum, ela continua lá: não precisa perguntar.
+    if (!inAlbum(character().cover.path)) {
+      const ok = await confirmDialog({
+        title: "Tirar a foto de capa?",
+        message: "Essa foto não está no álbum, então ela será apagada da nuvem. Isso não pode ser desfeito.",
+        confirmText: "Sim, apagar",
+        danger: true,
+      });
+      if (!ok) return;
+    }
+    db.removeCharacterCover(storyId, characterId).catch((err) => toast(err.message));
   }
 
-  function makeCover(path) {
-    const photos = character().photos;
-    const chosen = photos.find((p) => p.path === path);
-    save({ photos: [chosen, ...photos.filter((p) => p !== chosen)] }).catch(() => {});
+  // ---------- Álbum ----------
+
+  async function renderAlbum() {
+    const c = character();
+    const id = characterId;
+    const grid = $(".album");
+    $(".album-vazio").hidden = c.photos.length > 0;
+    let urls = {};
+    try {
+      urls = await db.getPhotoUrls(c.photos.map((p) => p.path));
+    } catch (err) {
+      console.error(err);
+    }
+    if (id !== characterId) return;
+    // reaproveita as fotos que já estão na tela (não piscam)
+    const old = new Map([...grid.children].map((b) => [b.dataset.path, b]));
+    grid.replaceChildren(...character().photos.map((p, i) => {
+      let b = old.get(p.path);
+      if (!b) {
+        b = document.createElement("button");
+        b.type = "button";
+        b.className = "album-foto";
+        b.dataset.path = p.path;
+        b.innerHTML = `<img alt="" loading="lazy"><span class="album-capa" title="É a capa">★</span>`;
+        b.querySelector("img").style.aspectRatio = `${p.w} / ${p.h}`;
+      }
+      const img = b.querySelector("img");
+      if (urls[p.path] && !img.src) img.src = urls[p.path];
+      b.dataset.i = i;
+      b.setAttribute("aria-label", `Abrir a foto ${i + 1} do álbum`);
+      b.classList.toggle("e-capa", character().cover?.path === p.path);
+      return b;
+    }));
+  }
+
+  async function addToAlbum() {
+    const files = await pickImages();
+    if (!files.length) return;
+    const sending = $(".album-enviando");
+    const photos = [];
+    for (const file of files) {
+      try {
+        photos.push(await prepareAlbumPhoto(file));
+      } catch (err) {
+        toast(err.message);
+      }
+    }
+    if (!photos.length) return;
+    sending.textContent = `Enviando… 0 de ${photos.length}`;
+    try {
+      await db.addAlbumPhotos(storyId, characterId, photos, (done, total) => {
+        sending.textContent = `Enviando… ${done} de ${total}`;
+      });
+      sending.textContent = "";
+    } catch (err) {
+      console.error(err);
+      sending.textContent = "Algumas fotos não foram enviadas. Confira a internet e tente de novo.";
+    }
+  }
+
+  // Visor: a foto grande, com setas, "usar como capa" e "apagar".
+  function openViewer(start) {
+    let index = start;
+    const dialog = document.createElement("dialog");
+    dialog.className = "album-visor";
+    dialog.innerHTML = `
+      <button class="visor-fechar" type="button" data-acao="fechar" aria-label="Fechar">×</button>
+      <button class="visor-seta" type="button" data-ir="-1" aria-label="Foto anterior">‹</button>
+      <figure class="visor-foto"><img alt=""></figure>
+      <button class="visor-seta" type="button" data-ir="1" aria-label="Próxima foto">›</button>
+      <div class="visor-rodape">
+        <span class="visor-contagem" aria-live="polite"></span>
+        <button class="botao secundario" type="button" data-acao="visor-capa"></button>
+        <button class="botao perigo" type="button" data-acao="visor-apagar">Apagar</button>
+      </div>`;
+    document.body.appendChild(dialog);
+    const img = dialog.querySelector("img");
+
+    async function show() {
+      const photos = character()?.photos || [];
+      if (!photos.length) return dialog.close();
+      index = (index + photos.length) % photos.length;
+      const p = photos[index];
+      dialog.querySelector(".visor-contagem").textContent = `${index + 1} de ${photos.length}`;
+      dialog.querySelectorAll(".visor-seta").forEach((b) => (b.hidden = photos.length < 2));
+      const isCover = character().cover?.path === p.path;
+      const coverButton = dialog.querySelector('[data-acao="visor-capa"]');
+      coverButton.textContent = isCover ? "★ É a capa" : "★ Usar como capa";
+      coverButton.disabled = isCover;
+      img.dataset.path = p.path;
+      img.style.aspectRatio = `${p.w} / ${p.h}`;
+      img.removeAttribute("src");
+      const urls = await db.getPhotoUrls([p.path]).catch(() => ({}));
+      if (img.dataset.path === p.path && urls[p.path]) img.src = urls[p.path];
+    }
+
+    dialog.addEventListener("click", async (event) => {
+      const step = event.target.closest("[data-ir]")?.dataset.ir;
+      const action = event.target.closest("[data-acao]")?.dataset.acao;
+      if (step) {
+        index += Number(step);
+        show();
+      } else if (action === "fechar" || event.target === dialog) {
+        dialog.close();
+      } else if (action === "visor-capa") {
+        await db.useAlbumPhotoAsCover(storyId, characterId, img.dataset.path).catch((err) => toast(err.message));
+        show();
+      } else if (action === "visor-apagar") {
+        const path = img.dataset.path;
+        const ok = await confirmDialog({
+          title: "Apagar esta foto do álbum?",
+          message: character().cover?.path === path
+            ? "A foto sai do álbum, mas continua como capa."
+            : "A foto será apagada da nuvem. Isso não pode ser desfeito.",
+          confirmText: "Sim, apagar",
+          danger: true,
+        });
+        if (!ok) return;
+        await db.removeAlbumPhoto(storyId, characterId, path).catch((err) => toast(err.message));
+        show();
+      }
+    });
+    dialog.addEventListener("keydown", (event) => {
+      if (event.target.closest("button") && event.key === "Enter") return;
+      if (event.key === "ArrowLeft") { index -= 1; show(); }
+      if (event.key === "ArrowRight") { index += 1; show(); }
+    });
+    // arrastar para os lados (dedo ou mouse)
+    let startX = null;
+    img.addEventListener("pointerdown", (e) => (startX = e.clientX));
+    img.addEventListener("pointerup", (e) => {
+      if (startX == null) return;
+      const dx = e.clientX - startX;
+      startX = null;
+      if (Math.abs(dx) > 50) {
+        index += dx < 0 ? 1 : -1;
+        show();
+      }
+    });
+    dialog.addEventListener("close", () => dialog.remove());
+    dialog.showModal();
+    show();
   }
 
   // ---------- Frases das músicas ----------
 
-  function renderLyrics() {
-    const list = $(".letras");
-    const lyrics = character().lyrics;
-    list.replaceChildren(...lyrics.map((l) => {
-      const li = document.createElement("li");
-      li.className = "letra";
-      li.dataset.id = l.id;
-      if (l.id === editingLyric) {
-        li.classList.add("editando");
-        li.innerHTML = `
-          <textarea rows="2" aria-label="Frase da música"></textarea>
-          <div class="letra-linha">
-            <input data-campo="song" maxlength="80" placeholder="Música" aria-label="Música">
-            <input data-campo="artist" maxlength="80" placeholder="Artista" aria-label="Artista">
-            <button class="botao" type="button" data-acao="salvar-letra">Salvar</button>
-            <button class="botao secundario" type="button" data-acao="cancelar-letra">Cancelar</button>
-          </div>`;
-        li.querySelector("textarea").value = l.text;
-        li.querySelector('[data-campo="song"]').value = l.song;
-        li.querySelector('[data-campo="artist"]').value = l.artist;
-        return li;
-      }
-      li.innerHTML = `
-        <blockquote></blockquote>
-        <div class="letra-rodape">
-          <span class="letra-musica"></span>
-          <span class="letra-acoes">
-            <button class="link" type="button" data-acao="editar-letra">editar</button>
-            <button class="link" type="button" data-acao="apagar-letra">apagar</button>
-          </span>
+  const lyricsCarousel = createCarousel({
+    label: "Frases das músicas",
+    prev: "Frase anterior",
+    next: "Próxima frase",
+    item: "Frase",
+    busy: () => Boolean(editingLyric),
+  });
+  $(".letras").prepend(lyricsCarousel.el);
+
+  function lyricCard(l) {
+    const card = document.createElement("div");
+    card.className = "letra";
+    if (l.id === editingLyric) {
+      card.classList.add("editando");
+      card.innerHTML = `
+        <textarea rows="2" aria-label="Frase da música"></textarea>
+        <div class="letra-linha">
+          <input data-campo="song" maxlength="80" placeholder="Música" aria-label="Música">
+          <input data-campo="artist" maxlength="80" placeholder="Artista" aria-label="Artista">
+          <button class="botao" type="button" data-acao="salvar-letra">Salvar</button>
+          <button class="botao secundario" type="button" data-acao="cancelar-letra">Cancelar</button>
         </div>`;
-      li.querySelector("blockquote").textContent = l.text;
-      li.querySelector(".letra-musica").textContent = [l.song, l.artist].filter(Boolean).join(" – ");
+      card.querySelector("textarea").value = l.text;
+      card.querySelector('[data-campo="song"]').value = l.song;
+      card.querySelector('[data-campo="artist"]').value = l.artist;
+      return card;
+    }
+    card.innerHTML = `
+      <blockquote></blockquote>
+      <div class="letra-rodape">
+        <span class="letra-musica"></span>
+        <span class="letra-acoes">
+          <button class="link" type="button" data-acao="editar-letra">editar</button>
+          <button class="link" type="button" data-acao="apagar-letra">apagar</button>
+        </span>
+      </div>`;
+    card.querySelector("blockquote").textContent = l.text;
+    card.querySelector(".letra-musica").textContent = [l.song, l.artist].filter(Boolean).join(" – ");
+    return card;
+  }
+
+  // `showId`: vai direto para essa frase (ex.: a que acabou de ser guardada).
+  function renderLyrics({ showId = null } = {}) {
+    const lyrics = character().lyrics;
+    $(".letras-vazio").hidden = lyrics.length > 0;
+    lyricsCarousel.el.hidden = lyrics.length === 0;
+    lyricsCarousel.set(lyrics.map((l) => {
+      const li = document.createElement("li");
+      li.className = "quote-slide";
+      li.dataset.id = l.id;
+      li.appendChild(lyricCard(l));
       return li;
-    }));
+    }), { showId });
   }
 
   $(".letra-nova").addEventListener("submit", async (event) => {
@@ -223,6 +378,7 @@ export function createCharacterPage(root, { onBack, onDeleted }) {
     try {
       await save({ lyrics: [...character().lyrics, lyric] });
       form.reset();
+      renderLyrics({ showId: lyric.id });
     } catch {
       // aviso já mostrado
     }
@@ -230,14 +386,14 @@ export function createCharacterPage(root, { onBack, onDeleted }) {
 
   $(".letras").addEventListener("click", async (event) => {
     const action = event.target.closest("[data-acao]")?.dataset.acao;
-    const li = event.target.closest(".letra");
+    const li = event.target.closest(".quote-slide");
     if (!action || !li) return;
     const lyrics = character().lyrics;
     const lyric = lyrics.find((l) => l.id === li.dataset.id);
     if (action === "editar-letra") {
       editingLyric = lyric.id;
       renderLyrics();
-      $(".letra.editando textarea").focus();
+      $(".letra.editando textarea")?.focus();
     } else if (action === "cancelar-letra") {
       editingLyric = null;
       renderLyrics();
@@ -250,7 +406,7 @@ export function createCharacterPage(root, { onBack, onDeleted }) {
           ? { ...l, text, song: li.querySelector('[data-campo="song"]').value.trim(), artist: li.querySelector('[data-campo="artist"]').value.trim() }
           : l)),
       }).catch(() => {});
-      renderLyrics();
+      renderLyrics({ showId: lyric.id });
     } else if (action === "apagar-letra") {
       const preview = lyric.text.length > 80 ? lyric.text.slice(0, 80) + "…" : lyric.text;
       const ok = await confirmDialog({
@@ -277,7 +433,8 @@ export function createCharacterPage(root, { onBack, onDeleted }) {
       about.value = c.about;
       fit(about);
     }
-    renderPhotos();
+    renderCover();
+    renderAlbum();
     if (!editingLyric) renderLyrics();
   }
 
@@ -290,8 +447,10 @@ export function createCharacterPage(root, { onBack, onDeleted }) {
       clearTimeout(aboutTimer);
       aboutTimer = null;
       editingLyric = null;
-      $(".ficha-enviando").textContent = "";
+      root.querySelectorAll(".ficha-enviando").forEach((p) => (p.textContent = ""));
       $(".ficha-foto").replaceChildren();
+      $(".album").replaceChildren();
+      lyricsCarousel.reset();
       createCategoryPicker($(".ficha-traits"), {
         selected: character().traits,
         known: db.getAllTraits(),
@@ -348,7 +507,7 @@ export function createCharacterPage(root, { onBack, onDeleted }) {
     const c = character();
     const ok = await confirmDialog({
       title: "Apagar este personagem?",
-      message: `"${c.name || "Sem nome"}" e tudo dele (fotos, quotes, playlist e frases das músicas) serão apagados. Isso não pode ser desfeito.`,
+      message: `"${c.name || "Sem nome"}" e tudo dele (capa, álbum, quotes, playlist e frases das músicas) serão apagados. Isso não pode ser desfeito.`,
       confirmText: "Sim, apagar",
       danger: true,
     });
@@ -364,13 +523,15 @@ export function createCharacterPage(root, { onBack, onDeleted }) {
   // Cliques da página (os quotes e a playlist cuidam dos próprios botões).
   root.addEventListener("click", (event) => {
     if (event.target.closest(".ficha-quotes, .ficha-playlist, .letras, .letra-nova")) return;
+    const photo = event.target.closest(".album-foto");
+    if (photo && characterId) return openViewer(Number(photo.dataset.i));
     const el = event.target.closest("[data-acao]");
     if (!el || !characterId) return;
     const action = el.dataset.acao;
     if (action === "voltar") onBack(storyId);
-    else if (action === "foto") addPhoto();
-    else if (action === "apagar-foto") removePhoto(el.closest("[data-path]").dataset.path);
-    else if (action === "capa") makeCover(el.closest("[data-path]").dataset.path);
+    else if (action === "capa-trocar") changeCover();
+    else if (action === "capa-tirar") removeCover();
+    else if (action === "album-add") addToAlbum();
     else if (action === "apagar-personagem") removeCharacter();
   });
 
